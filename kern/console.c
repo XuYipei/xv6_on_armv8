@@ -137,11 +137,7 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
             break;
         case 'x':
             if (l == 2) printint(va_arg(ap, int64_t), 16, 0);
-<<<<<<< HEAD
-            else printint(va_arg(ap, uint32_t), 16, 0);
-=======
             else printint(va_arg(ap, int), 16, 0);
->>>>>>> 97fa982... Fix missing break in switch
             break;
         case 'p':
             printint((uint64_t)va_arg(ap, void *), 16, 0);
