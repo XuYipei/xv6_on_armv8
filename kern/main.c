@@ -58,7 +58,7 @@ main()
     bfree(b, 2 << 12);
     bfree((uint64_t)b + (2 << 12), 2 << 12);
     uint64_t *c = balloc(8 << 12);
-    cprintf("%llx %llx %llx\n", a, b, c);
+    cprintf("%llx %llx\n", a, c);
 
     /*
      * Load ttbr1_el1 and write 233 into va=0xFFFF000000001000, which
@@ -68,7 +68,7 @@ main()
     ttbr1_el1 = (uint64_t *)load_ttbr_el1(1);
     //cprintf("%llx\n", (uint64_t)ttbr1_el1);
     uint64_t *va;
-    va = 0xFFFF000000001000;
+    va = 0xFFFF000000001010;
     *va = 233;
     cprintf("%llu\n", *va);
 
@@ -81,7 +81,7 @@ main()
     memset((char *)ttbr, 0, PGSIZE);
     map_region(ttbr, 0, PGSIZE, 0x1000, 0);
     modify_ttbr_el1(ttbr, 0);
-    va = 0x0000000000000000;
+    va = 0x0000000000000010;
     cprintf("%llu\n", *va);
 
     while (1) ;
