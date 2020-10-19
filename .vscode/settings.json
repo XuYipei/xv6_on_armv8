@@ -1,0 +1,16 @@
+{
+    "python.pythonPath": "C:\\Users\\XuYipei\\anaconda3\\envs\\nlp\\python.exe",
+    "files.associations": {
+        "initializer_list": "c",
+        "istream": "c",
+        "iterator": "c",
+        "ostream": "c",
+        "streambuf": "c",
+        "xiosbase": "c",
+        "xlocale": "c",
+        "xlocnum": "c",
+        "xmemory": "c",
+        "xstring": "c",
+        "xutility": "c"
+    }
+}
