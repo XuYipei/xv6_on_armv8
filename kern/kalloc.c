@@ -8,16 +8,13 @@
 
 extern char end[];
 
-/* 
- * Free page's list element struct.
- * We store each free page's run structure in the free page itself.
- */
+/*
 struct run {
     struct run *next;
 };
 
 struct {
-    struct run *free_list; /* Free list of physical pages */
+    struct run *free_list;
 } kmem;
 
 void
@@ -26,7 +23,6 @@ alloc_init()
     free_range(end, P2V(PHYSTOP));
 }
 
-/* Free the page of physical memory pointed at by v. */
 void
 kfree(char *v)
 {
@@ -35,30 +31,34 @@ kfree(char *v)
     if ((uint64_t)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
         panic("kfree");
 
-    /* Fill with junk to catch dangling refs. */
     memset(v, 1, PGSIZE);
     
-    /* TODO: Your code here. */
+    r = (struct run *)v;
+    r->next = kmem.free_list;
+    kmem.free_list = r;
 }
 
 void
 free_range(void *vstart, void *vend)
 {
+    //cprintf("%llx\n", (uint64_t)vstart);
+    //cprintf("%llx\n", (uint64_t)vend);
+
     char *p;
     p = ROUNDUP((char *)vstart, PGSIZE);
     for (; p + PGSIZE <= (char *)vend; p += PGSIZE)
         kfree(p);
 }
 
-/* 
- * Allocate one 4096-byte page of physical memory.
- * Returns a pointer that the kernel can use.
- * Returns 0 if the memory cannot be allocated.
- */
 char *
 kalloc()
 {
-    /* TODO: Your code here. */
+    if (kmem.free_list == NULL) 
+        return(0);
+
+    struct run *r = kmem.free_list; 
+    kmem.free_list = r->next;
+    return((char *)r);
 }
 
 void
@@ -72,3 +72,4 @@ check_free_list()
         assert((void *)p > (void *)end);
     }
 }
+*/

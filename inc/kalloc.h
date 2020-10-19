@@ -7,4 +7,7 @@ void kfree(char*);
 void free_range(void *, void *);
 void check_free_list();
 
+char *balloc(uint64_t);
+void bfree(void *, uint64_t);
+
 #endif /* !KERN_KALLOC_H */
