@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # set architecture aarch64
 target remote localhost:1234
 file obj/kernel8.elf
@@ -5,3 +6,12 @@ file obj/kernel8.elf
 # Uncomment the following line and change
 # PAHT_TO_PWNDBG to your pwndbg directory to enable pwndbg
 # source /home/sunflower/Downloads/pwndbg/gdbinit.py
+=======
+set architecture aarch64
+target remote localhost:1234
+file obj/kernel8.elf
+
+# Uncomment the following line and change
+# PAHT_TO_PWNDBG to your pwndbg directory to enable pwndbg
+# source PATH_TO_YOUR_PWNDBG/gdbinit.py
+>>>>>>> ed2d85b... Lab1, main.c
