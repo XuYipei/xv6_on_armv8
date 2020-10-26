@@ -9,9 +9,6 @@
 extern char end[];
 
 /* 
- * Free page's list element struct.
- * We store each free page's run structure in the free page itself.
- */
 struct buddy_t {
     struct buddy_t *next, *prev;
 };
@@ -217,7 +214,6 @@ kfree(char *v)
 char *
 kalloc()
 {
-    /* TODO: Your code here. */
     return(buddy_alloc(allocator, 1 << 12));
 }
 
@@ -238,70 +234,5 @@ bfree(void *v, uint64_t size)
 {
     buddy_free(allocator, v, size);
 }
-
-/*
-struct run {
-    struct run *next;
-};
-
-struct {
-    struct run *free_list;
-} kmem;
-
-void
-alloc_init()
-{
-    free_range(end, P2V(PHYSTOP));
-}
-
-void
-kfree(char *v)
-{
-    struct run *r;
-
-    if ((uint64_t)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
-        panic("kfree");
-
-    memset(v, 1, PGSIZE);
-    
-    r = (struct run *)v;
-    r->next = kmem.free_list;
-    kmem.free_list = r;
-}
-
-void
-free_range(void *vstart, void *vend)
-{
-    //cprintf("%llx\n", (uint64_t)vstart);
-    //cprintf("%llx\n", (uint64_t)vend);
-
-    char *p;
-    p = ROUNDUP((char *)vstart, PGSIZE);
-    for (; p + PGSIZE <= (char *)vend; p += PGSIZE)
-        kfree(p);
-}
-
-char *
-kalloc()
-{
-    if (kmem.free_list == NULL) 
-        return(0);
-
-    struct run *r = kmem.free_list; 
-    kmem.free_list = r->next;
-    return((char *)r);
-}
-
-void
-check_free_list()
-{
-    struct run *p;
-    if (!kmem.free_list)
-        panic("'kmem.free_list' is a null pointer!");
-
-    for (p = kmem.free_list; p; p = p->next) {
-        assert((void *)p > (void *)end);
-    }
-}
-
 */
+

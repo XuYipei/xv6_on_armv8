@@ -5,6 +5,8 @@
 
 struct trapframe {
     /* TODO: Design your own trapframe layout here. */
+    uint64_t *sp;
+    uint64_t pc;
 };
 
 void trap(struct trapframe *);
