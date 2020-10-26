@@ -8,7 +8,6 @@
 
 extern char end[];
 
-/*
 struct run {
     struct run *next;
 };
@@ -72,4 +71,3 @@ check_free_list()
         assert((void *)p > (void *)end);
     }
 }
-*/
