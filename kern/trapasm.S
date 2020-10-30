@@ -13,29 +13,29 @@ alltraps:
 
     /* TODO: Your code here. */
 
-    stp x28, x29, [sp, #-16]!
-    stp x26, x27, [sp, #-16]!
-    stp x24, x25, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    stp x20, x21, [sp, #-16]!
-    stp x18, x19, [sp, #-16]!
-    stp x16, x17, [sp, #-16]!
-    stp x14, x15, [sp, #-16]!
-    stp x12, x13, [sp, #-16]!
-    stp x10, x11, [sp, #-16]!
-    stp x8, x9, [sp, #-16]!
-    stp x6, x7, [sp, #-16]!
-    stp x4, x5, [sp, #-16]!
-    stp x2, x3, [sp, #-16]!
-    stp x0, x1, [sp, #-16]!
+    stp x29, x30, [sp, #-16]!
+    stp x27, x28, [sp, #-16]!
+    stp x25, x26, [sp, #-16]!
+    stp x23, x24, [sp, #-16]!
+    stp x21, x22, [sp, #-16]!
+    stp x19, x20, [sp, #-16]!
+    stp x17, x18, [sp, #-16]!
+    stp x15, x16, [sp, #-16]!
+    stp x13, x14, [sp, #-16]!
+    stp x11, x12, [sp, #-16]!
+    stp x9, x10, [sp, #-16]!
+    stp x7, x8, [sp, #-16]!
+    stp x5, x6, [sp, #-16]!
+    stp x3, x4, [sp, #-16]!
+    stp x1, x2, [sp, #-16]!
     
+    sub sp, sp, #32
+    mrs x29, SPSR_EL1   /* PSTATE */
+    mrs x28, ELR_EL1    /* PC */
+    mrs x27, SP_EL0     /* SP */
 
-    mrs x1, SPSR_EL1    /*PSTATE*/
-    mrs x0, ELR_EL1     /*CAUSE*/
-    mrs x2, SP_EL0      /*SP*/
-
-    stp x30, x0, [sp, #-16]
-    stp x2, x1, [sp, #-16]
+    stp x29, x0, [sp, #16]
+    stp x27, x28, [sp]
 
     /*
      * Call trap(struct *trapframe).
@@ -43,8 +43,9 @@ alltraps:
      */
 
     /* TODO: Your code here. */
-    call trap()
-
+    
+    mov x27, x0
+    bl trap
 
 /* Return falls through to trapret. */
 .global trapret
@@ -57,4 +58,27 @@ trapret:
 
     /* TODO: Your code here. */
 
+    ldp x27, x28, [sp], #16
+    ldp x29, x0, [sp], #16
+    
+    msr SP_EL0, x27
+    msr ELR_EL1, x28
+    msr SPSR_EL1, x29
+
+    ldp x1, x2, [sp], #16
+    ldp x3, x4, [sp], #16
+    ldp x5, x6, [sp], #16
+    ldp x7, x8, [sp], #16
+    ldp x9, x10, [sp], #16
+    ldp x11, x12, [sp], #16
+    ldp x13, x14, [sp], #16
+    ldp x15, x16, [sp], #16
+    ldp x17, x18, [sp], #16
+    ldp x19, x20, [sp], #16
+    ldp x21, x22, [sp], #16
+    ldp x23, x24, [sp], #16
+    ldp x25, x26, [sp], #16
+    ldp x27, x28, [sp], #16
+    ldp x29, x30, [sp], #16
+    
     eret
