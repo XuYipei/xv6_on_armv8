@@ -36,16 +36,13 @@ pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
 
         if (tb[idx] == 0 || (tb[idx] & PTE_P) == 0){
             if (!alloc) return(NULL);
-            tb[idx] = V2P((uint64_t)kalloc());
+            tb[idx] = (uint64_t)V2P(kalloc());
             memset((char *)tb[idx], 0, PGSIZE);
             tb[idx] |= PTE_P | PTE_TABLE | PTE_AF | PTE_NORMAL;
         }
 
-        if (i == 2 && (tb[idx] & PTE_TABLE) == 0)
-            return(&tb[idx]);
-
-        uint64_t descriptor = (tb[idx]) >> 12 << 12;
-        tb = (uint64_t *)P2V(descriptor);
+        uint64_t descriptor = P2V(tb[idx] >> 12 << 12);
+        tb = (uint64_t *)descriptor;
     }
 
     return(&tb[PTX(3, va)]);
@@ -70,7 +67,7 @@ map_region(uint64_t *pgdir, void *va, uint64_t size, uint64_t pa, int64_t perm)
     uint64_t tail = perm | PTE_P | PTE_TABLE | PTE_AF | PTE_NORMAL;
     for (v = vastart; v <= vaend; v += PGSIZE, pa += PGSIZE){
         uint64_t *pte = pgdir_walk(pgdir, v, 1);
-        uint64_t pa_ = tail | (uint64_t)pa;
+        uint64_t pa_ = tail | ((uint64_t)pa >> 12 << 12);
         if (pte == NULL)
             return(-1);
         if ((uint64_t)*pte & PTE_P)
@@ -95,9 +92,9 @@ vm_free(uint64_t *pgdir, int level)
         if (pgdir[i] != 0 && (pgdir[i] & PTE_P)){
             if (pgdir[i] & PTE_TABLE){
                 if (level != 3)
-                    vm_free((uint64_t *)P2V(pgdir[i] >> 12 << 12), level + 1);
-                pgdir[i] = 0;
+                    vm_free((uint64_t *)(pgdir[i] >> 12 << 12), level + 1);
             }
+            pgdir[i] = 0;
         }
     }
     kfree(pgdir);
