@@ -30,7 +30,7 @@ kfree(char *v)
     if ((uint64_t)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
         panic("kfree");
 
-    // memset(v, 1, PGSIZE);
+    memset(v, 1, PGSIZE);
     
     r = (struct run *)v;
     r->next = kmem.free_list;
