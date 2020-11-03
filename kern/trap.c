@@ -9,14 +9,28 @@
 #include "console.h"
 #include "clock.h"
 #include "timer.h"
+#include "spinlock.h"
+
+uint32_t irqinitcnt;
+struct spinlock irqinitlock;
 
 void
 irq_init()
 {
+    acquire(&irqinitlock);
+
+    if (irqinitcnt){
+        release(&irqinitlock);
+        return;
+    }
+    irqinitcnt = 1;
+
     cprintf("- irq init\n");
     clock_init();
     put32(ENABLE_IRQS_1, AUX_INT);
     put32(GPU_INT_ROUTE, GPU_IRQ2CORE(0));
+
+    release(&irqinitlock);
 }
 
 void

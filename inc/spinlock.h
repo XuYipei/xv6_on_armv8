@@ -7,4 +7,12 @@ struct spinlock {
 void acquire(struct spinlock *);
 void release(struct spinlock *);
 
+
+struct mcslock {
+    struct mcslock *next;
+    volatile int locked;         
+};
+void mcsacquire(struct mcslock *, struct mcslock *);
+void mcsrelease(struct mcslock *, struct mcslock *);
+
 #endif

@@ -4,9 +4,13 @@
 #include "string.h"
 #include "console.h"
 #include "kalloc.h"
+#include "vm.h"
 #include "trap.h"
 #include "timer.h"
 #include "spinlock.h"
+
+uint32_t pgdrinitcnt;
+struct spinlock pgdrlock;
 
 void
 main()
@@ -38,6 +42,16 @@ main()
     timer_init();
 
     cprintf("CPU %d: Init success.\n", cpuid());
+
+
+    acquire(&pgdrlock);
+
+    if (pgdrinitcnt == 0){
+        
+        pgdrinitcnt = 1;
+    }
+
+    release(&pgdrlock);
 
     while (1) ;
 }
