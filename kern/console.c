@@ -6,7 +6,7 @@
 #include "uart.h"
 #include "spinlock.h"
 
-static struct spinlock conslock;
+struct spinlock conslock = (struct spinlock){(struct spinlock *)0, 0};
 static int panicked = -1;
 
 void

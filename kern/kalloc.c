@@ -18,26 +18,27 @@ struct {
 } kmem;
 
 uint32_t kmeminitcnt;
-struct spinlock kmemlock, kmeminitlock;
+// struct spinlock kmemlock, kmeminitlock;
+struct MLOCK kmemlock, kmeminitlock;
 
 void
 alloc_init()
 {
-    struct mcslock locallock;
-    // mcsacquire(&kmeminitlock, &locallock);
-    acquire(&kmeminitlock);
+    struct MLOCK * locallock = (struct MLOCK *)malloc(sizeof(struct MLOCK));
+    macquire(&kmeminitlock, locallock);
+    // acquire(&kmeminitlock);
 
     if (kmeminitcnt != 0){
-        // mcsrelease(&kmeminitlock, &locallock);    
-        release(&kmeminitlock);
+        mrelease(&kmeminitlock, locallock);
+        // release(&kmeminitlock);
         return;
     }
     kmeminitcnt = 1;
     
     free_range(end, P2V(PHYSTOP));
 
-    // mcsrelease(&kmeminitlock, &locallock);
-    release(&kmeminitlock);
+    mrelease(&kmeminitlock, locallock);
+    // release(&kmeminitlock);
 }
 
 void
@@ -51,15 +52,15 @@ kfree(char *v)
     memset(v, 1, PGSIZE);
     r = (struct run *)v;
 
-    struct mcslock locallock;
-    // mcsacquire(&kmemlock, &locallock);
-    acquire(&kmemlock);
+    struct MLOCK * locallock = (struct MLOCK *)malloc(sizeof(struct MLOCK));
+    macquire(&kmemlock, locallock);
+    // acquire(&kmemlock);
 
     r->next = kmem.free_list;
     kmem.free_list = r;
 
-    // mcsrelease(&kmemlock, &locallock);
-    release(&kmemlock);
+    mrelease(&kmemlock, locallock);
+    // release(&kmemlock);
 }
 
 void
@@ -72,8 +73,6 @@ free_range(void *vstart, void *vend)
     p = ROUNDUP((char *)vstart, PGSIZE);
     for (; p + PGSIZE <= (char *)vend; p += PGSIZE){
         kfree(p);
-        // if ((uint64_t)(p - (char *)vstart) / PGSIZE % 4096 == 0)
-        //     cprintf("%llx\n", p);
     }        
 
 }
@@ -84,15 +83,15 @@ kalloc()
     if (kmem.free_list == NULL) 
         return(0);
     
-    struct mcslock locallock;
-    // mcsacquire(&kmemlock, &locallock);
-    acquire(&kmemlock);
+    struct MLOCK * locallock = (struct MLOCK *)malloc(sizeof(struct MLOCK));
+    macquire(&kmemlock, locallock);
+    // acquire(&kmemlock);
 
     struct run *r = kmem.free_list; 
     kmem.free_list = r->next;
 
-    // mcsrelease(&kmemlock, &locallock);
-    release(&kmemlock);
+    mrelease(&kmemlock, locallock);
+    // release(&kmemlock);
     
     return((char *)r);
 }
@@ -104,14 +103,14 @@ check_free_list()
     if (!kmem.free_list)
         panic("'kmem.free_list' is a null pointer!");
 
-    struct mcslock locallock;
-    // mcsacquire(&kmemlock, &locallock);
-    acquire(&kmemlock);
+    struct MLOCK * locallock = (struct MLOCK *)malloc(sizeof(struct MLOCK));
+    macquire(&kmemlock, locallock);
+    // acquire(&kmemlock);
 
     for (p = kmem.free_list; p; p = p->next) {
         assert((void *)p > (void *)end);
     }
 
-    // mcsrelease(&kmemlock, &locallock);
-    release(&kmemlock);
+    mrelease(&kmemlock, locallock);
+    // release(&kmemlock);
 }

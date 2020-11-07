@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "mmu.h"
 #include "arm.h"
 #include "string.h"
 #include "console.h"
@@ -9,8 +10,8 @@
 #include "timer.h"
 #include "spinlock.h"
 
-uint32_t pgdrinitcnt;
-struct spinlock pgdrlock;
+ uint32_t pgdrinitcnt = 0;
+struct spinlock pgdrinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
 
 void
 main()
@@ -29,7 +30,15 @@ main()
     /* TODO: Your code here. */
 
     /* TODO: Use `memset` to clear the BSS section of our program. */
-    memset(edata, 0, end - edata);    
+
+    acquire(&pgdrinitlock);
+    if (pgdrinitcnt == 0){
+        memset(edata, 0, end - edata);    
+        pgdrinitcnt = 1;
+    }
+    release(&pgdrinitlock);
+    
+    
     /* TODO: Use `cprintf` to print "hello, world\n" */
     console_init();
     alloc_init();
@@ -43,15 +52,7 @@ main()
 
     cprintf("CPU %d: Init success.\n", cpuid());
 
-
-    acquire(&pgdrlock);
-
-    if (pgdrinitcnt == 0){
-        
-        pgdrinitcnt = 1;
-    }
-
-    release(&pgdrlock);
+    check_vm();
 
     while (1) ;
 }
