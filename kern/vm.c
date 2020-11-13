@@ -29,21 +29,27 @@ pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
 {
     /* TODO: Your code here. */
 
+    uint32_t i;
     uint64_t *tb, *pa = NULL;
-    
+
     tb = pgdir;
-    for (int i = 0; i < 3; i++, tb = tb){
+    for (i = 0; i < 3; i++, tb = tb){
         uint32_t idx = PTX(i, va);
 
+        //cprintf("%d %d start\n", cpuid(), i);
         if (tb[idx] == 0 || (tb[idx] & PTE_P) == 0){
             if (!alloc){
                 return(NULL);
             }
+            //cprintf("???\n");
             uint64_t address = kalloc();
+            //cprintf("+++++++++\n");
+
             tb[idx] = (uint64_t)V2P(address);
             memset((char *)address, 0, PGSIZE);
             tb[idx] |= PTE_P | PTE_TABLE | PTE_AF | PTE_NORMAL;
         }
+        //cprintf("%d %d end\n", cpuid(), i);
 
         uint64_t descriptor = P2V(tb[idx] >> 12 << 12);
         tb = (uint64_t *)descriptor;
@@ -161,5 +167,9 @@ check_vm()
     map_region(ttbr0, 0x0 + (cpuif << 12), PGSIZE, 0x6000 + (cpuif << 12), 0);
     modify_ttbr_el1(ttbr0, 0);
     va0 = 0x0000000000000010 + (cpuif << 12);
-    cprintf("CPU %llu: %llu %llu\n", cpuif, *(uint64_t *)va0, *(uint64_t *)va1);
+
+    if (*(uint64_t *)va0 == *(uint64_t *)va1)
+        cprintf("CPU %llu: check vm pass.\n", cpuif);
+    else
+        cprintf("CPU %llu: check vm fail.\n", cpuif);
 }

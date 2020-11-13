@@ -35,10 +35,11 @@ main()
     if (pgdrinitcnt == 0){
         memset(edata, 0, end - edata);    
         pgdrinitcnt = 1;
+        cprintf("init mem in CPU %d.\n", cpuid());
     }
     release(&pgdrinitlock);
     
-    
+
     /* TODO: Use `cprintf` to print "hello, world\n" */
     console_init();
     alloc_init();
