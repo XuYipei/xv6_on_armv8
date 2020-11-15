@@ -44,9 +44,7 @@ pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
             if (!alloc){
                 return(NULL);
             }
-            //cprintf("???\n");
             uint64_t address = kalloc();
-            //cprintf("+++++++++\n");
 
             tb[idx] = (uint64_t)V2P(address);
             memset((char *)address, 0, PGSIZE);
