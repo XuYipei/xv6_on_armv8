@@ -32,21 +32,27 @@ pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
 {
     /* TODO: Your code here. */
 
+    uint32_t i;
     uint64_t *tb, *pa = NULL;
-    
+
     tb = pgdir;
-    for (int i = 0; i < 3; i++, tb = tb){
+    for (i = 0; i < 3; i++, tb = tb){
         uint32_t idx = PTX(i, va);
 
+        //cprintf("%d %d start\n", cpuid(), i);
         if (tb[idx] == 0 || (tb[idx] & PTE_P) == 0){
             if (!alloc){
                 return(NULL);
             }
+            //cprintf("???\n");
             uint64_t address = kalloc();
+            //cprintf("+++++++++\n");
+
             tb[idx] = (uint64_t)V2P(address);
             memset((char *)address, 0, PGSIZE);
             tb[idx] |= PTE_P | PTE_TABLE | PTE_AF | PTE_NORMAL;
         }
+        //cprintf("%d %d end\n", cpuid(), i);
 
         uint64_t descriptor = P2V(tb[idx] >> 12 << 12);
         tb = (uint64_t *)descriptor;
