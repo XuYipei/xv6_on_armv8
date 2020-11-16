@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> c53d211... lab5
 OUTPUT_FORMAT("elf64-littleaarch64")
 OUTPUT_ARCH(aarch64)
 ENTRY(_start)
@@ -23,6 +26,7 @@ SECTIONS
 		*(.eh_frame .note.GNU-stack)
 	}
 }
+<<<<<<< HEAD
 =======
 SECTIONS
 {
@@ -40,3 +44,5 @@ SECTIONS
     PROVIDE(end = .);
 }
 >>>>>>> c46d735... blabla
+=======
+>>>>>>> c53d211... lab5
