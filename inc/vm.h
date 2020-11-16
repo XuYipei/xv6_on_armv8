@@ -7,12 +7,19 @@
 void vm_free(uint64_t *, int);
 void uvm_switch(struct proc *);
 void uvm_init(uint64_t *, char *, int);
+<<<<<<< HEAD
 
 uint64_t *pgdir_init();
+=======
+>>>>>>> c53d211... lab5
 
 uint64_t *pgdir_walk(uint64_t *, const void *, int64_t);
 
 int map_region(uint64_t *, void *, uint64_t, uint64_t, int64_t);
 
 
+<<<<<<< HEAD
 #endif
+=======
+#endif /* !KERN_VM_H */
+>>>>>>> c53d211... lab5
