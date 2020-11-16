@@ -6,6 +6,7 @@
 #include "console.h"
 #include "kalloc.h"
 #include "spinlock.h"
+#include "arm.h"
 
 extern char end[];
 
@@ -17,28 +18,30 @@ struct {
     struct run *free_list;
 } kmem;
 
-uint32_t kmeminitcnt;
-// struct spinlock kmemlock, kmeminitlock;
-struct MLOCK kmemlock, kmeminitlock;
+uint32_t kmeminitcnt = 0;
+//struct spinlock kmemcslock, kmeminitlock;
+struct mcslock kmemcslock, kmeminitlock;
 
 void
 alloc_init()
 {
-    struct MLOCK * locallock = (struct MLOCK *)malloc(sizeof(struct MLOCK));
-    macquire(&kmeminitlock, locallock);
-    // acquire(&kmeminitlock);
+    struct mcslock locallock;
+    //cprintf("acquire %llx\n", &locallock);
+    mcsacquire(&kmeminitlock, &locallock);
+    //acquire(&kmeminitlock);
 
     if (kmeminitcnt != 0){
-        mrelease(&kmeminitlock, locallock);
-        // release(&kmeminitlock);
+        mcsrelease(&kmeminitlock, &locallock);
+        //release(&kmeminitlock);
         return;
     }
     kmeminitcnt = 1;
     
     free_range(end, P2V(PHYSTOP));
 
-    mrelease(&kmeminitlock, locallock);
-    // release(&kmeminitlock);
+    mcsrelease(&kmeminitlock, &locallock);
+    //cprintf("%llx release %llx %llx %x\n", &locallock, locallock.next, kmeminitlock.next, locallock.next->locked);
+    //release(&kmeminitlock);
 }
 
 void
@@ -52,15 +55,15 @@ kfree(char *v)
     memset(v, 1, PGSIZE);
     r = (struct run *)v;
 
-    struct MLOCK * locallock = (struct MLOCK *)malloc(sizeof(struct MLOCK));
-    macquire(&kmemlock, locallock);
-    // acquire(&kmemlock);
+    struct mcslock locallock;
+    mcsacquire(&kmemcslock, &locallock);
+    //acquire(&kmemcslock);
 
     r->next = kmem.free_list;
     kmem.free_list = r;
 
-    mrelease(&kmemlock, locallock);
-    // release(&kmemlock);
+    mcsrelease(&kmemcslock, &locallock);
+    //release(&kmemcslock);
 }
 
 void
@@ -80,18 +83,19 @@ free_range(void *vstart, void *vend)
 char *
 kalloc()
 {
+    struct mcslock locallock;
+    mcsacquire(&kmemcslock, &locallock);
+    //acquire(&kmemcslock);
+
     if (kmem.free_list == NULL) 
         return(0);
-    
-    struct MLOCK * locallock = (struct MLOCK *)malloc(sizeof(struct MLOCK));
-    macquire(&kmemlock, locallock);
-    // acquire(&kmemlock);
 
     struct run *r = kmem.free_list; 
     kmem.free_list = r->next;
 
-    mrelease(&kmemlock, locallock);
-    // release(&kmemlock);
+    //cprintf("%llx %llx\n", (uint64_t)locallock.next);
+    mcsrelease(&kmemcslock, &locallock);
+    //release(&kmemcslock);
     
     return((char *)r);
 }
@@ -99,18 +103,18 @@ kalloc()
 void
 check_free_list()
 {
+    struct mcslock locallock;
+    mcsacquire(&kmemcslock, &locallock);
+    //acquire(&kmemcslock);
+
     struct run *p;
     if (!kmem.free_list)
         panic("kmem.free_list is a null pointer!\n");
-
-    struct MLOCK * locallock = (struct MLOCK *)malloc(sizeof(struct MLOCK));
-    macquire(&kmemlock, locallock);
-    // acquire(&kmemlock);
 
     for (p = kmem.free_list; p; p = p->next) {
         assert((void *)p > (void *)end);
     }
 
-    mrelease(&kmemlock, locallock);
-    // release(&kmemlock);
+    mcsrelease(&kmemcslock, &locallock);
+    //release(&kmemcslock);
 }
