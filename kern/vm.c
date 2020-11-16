@@ -120,10 +120,8 @@ void
 vm_free(uint64_t *pgdir, int level)
 {
     /* TODO: Your code here. */
-
+    
     vm_free_dfs(pgdir, level);
-
-    release(&pgdrlock);
 }
 
 /* Get a new page table */
