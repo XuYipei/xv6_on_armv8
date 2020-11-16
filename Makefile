@@ -1,9 +1,20 @@
+<<<<<<< HEAD
 ARCH := aarch64
+=======
+<<<<<<< HEAD
+>>>>>>> 00ee693... lab upd
 CROSS := aarch64-linux-gnu-
 CC := $(CROSS)gcc
 LD := $(CROSS)ld
 OBJDUMP := $(CROSS)objdump
 OBJCOPY := $(CROSS)objcopy
+=======
+CROSS := aarch64-linux-gnu
+CC := $(CROSS)-gcc
+LD := $(CROSS)-ld
+OBJDUMP := $(CROSS)-objdump
+OBJCOPY := $(CROSS)-objcopy
+>>>>>>> 79523a7... lab5 upd
 
 
 COPY := cp -f
