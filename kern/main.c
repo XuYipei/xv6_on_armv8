@@ -43,8 +43,6 @@ main()
     }
     release(&pgdrinitlock);
     
-
-    /* TODO: Use `cprintf` to print "hello, world\n" */
     console_init();
     alloc_init();
     cprintf("main: allocator init success.\n");
