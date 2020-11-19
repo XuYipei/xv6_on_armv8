@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "types.h"
 #include "mmu.h"
+#include "spinlock.h"
 #include "string.h"
 #include "memlayout.h"
 #include "console.h"
@@ -24,10 +25,16 @@ extern uint64_t *kpgdir;
  *     a pointer into the new page table page.
  */
 
+
+struct spinlock pgdrlock;
+
 uint64_t *
 pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
 {
     /* TODO: Your code here. */
+
+    acquire(&pgdrlock);
+
     uint64_t *tb, *pa = NULL;
     
     tb = pgdir;
@@ -35,7 +42,10 @@ pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
         uint32_t idx = PTX(i, va);
 
         if (tb[idx] == 0 || (tb[idx] & PTE_P) == 0){
-            if (!alloc) return(NULL);
+            if (!alloc){
+                release(&pgdrlock);
+                return(NULL);
+            }
             tb[idx] = (uint64_t)V2P(kalloc());
             memset((char *)tb[idx], 0, PGSIZE);
             tb[idx] |= PTE_P | PTE_TABLE | PTE_AF | PTE_NORMAL;
@@ -44,8 +54,11 @@ pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
         uint64_t descriptor = P2V(tb[idx] >> 12 << 12);
         tb = (uint64_t *)descriptor;
     }
+    uint64_t *ret = &tb[PTX(3, va)];
 
-    return(&tb[PTX(3, va)]);
+    release(&pgdrlock);
+
+    return(ret);
 }
 
 /*
@@ -61,6 +74,9 @@ int
 map_region(uint64_t *pgdir, void *va, uint64_t size, uint64_t pa, int64_t perm)
 {
     /* TODO: Your code here. */
+
+    acquire(&pgdrlock);
+
     char *vastart, *vaend, *v;
     vastart = ROUNDUP((char *)va, PGSIZE);
     vaend = ROUNDUP((char *)va + size - 1, PGSIZE);
@@ -68,12 +84,19 @@ map_region(uint64_t *pgdir, void *va, uint64_t size, uint64_t pa, int64_t perm)
     for (v = vastart; v <= vaend; v += PGSIZE, pa += PGSIZE){
         uint64_t *pte = pgdir_walk(pgdir, v, 1);
         uint64_t pa_ = tail | ((uint64_t)pa >> 12 << 12);
-        if (pte == NULL)
+        if (pte == NULL){
+            release(&pgdrlock);
             return(-1);
-        if ((uint64_t)*pte & PTE_P)
+        }            
+        if ((uint64_t)*pte & PTE_P){
+            release(&pgdrlock);
             return(-1);
+        }
         *pte = pa_;
     }
+
+    release(&pgdrlock);
+
     return(0);
 }
 
@@ -84,7 +107,7 @@ map_region(uint64_t *pgdir, void *va, uint64_t size, uint64_t pa, int64_t perm)
  */
 
 void
-vm_free(uint64_t *pgdir, int level)
+vm_free_dfs(uint64_t *pgdir, int level)
 {
     /* TODO: Your code here. */
     uint32_t i;
@@ -98,6 +121,17 @@ vm_free(uint64_t *pgdir, int level)
         }
     }
     kfree(pgdir);
+}
+
+void 
+vm_free(uint64_t *pgdir, int level)
+{
+    /* TODO: Your code here. */
+    acquire(&pgdrlock);
+
+    vm_free_dfs(pgdir, level);
+
+    release(&pgdrlock);
 }
 
 /* Get a new page table */
