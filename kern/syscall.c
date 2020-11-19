@@ -136,7 +136,24 @@ syscall()
      * }
      */
     /* TODO: Your code here. */
+<<<<<<< HEAD
 
+=======
+    
+    int code = proc->tf->r0;
+    switch (code)
+    {
+        case 0:
+            return sys_exec();
+            break;
+        case 1:
+            return sys_exec();
+            break;
+        default:
+            break;
+    }
+    
+>>>>>>> 5138260... Lab5
     return 0;
 }
 
