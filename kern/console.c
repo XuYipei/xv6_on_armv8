@@ -9,7 +9,7 @@
 
 #define CONSOLE 1
 
-static struct spinlock conslock;
+struct spinlock conslock = (struct spinlock){(struct spinlock *)0, 0};
 static int panicked = -1;
 
 #define INPUT_BUF 128

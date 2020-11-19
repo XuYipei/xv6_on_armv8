@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "mmu.h"
 #include "arm.h"
 #include "string.h"
 #include "console.h"
@@ -11,8 +12,8 @@
 #include "proc.h"
 
 struct cpu cpus[NCPU];
-uint32_t pgdrinitcnt;
-struct spinlock pgdrlock;
+uint32_t pgdrinitcnt = 0;
+struct spinlock pgdrinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
 
 void
 main()
@@ -33,7 +34,16 @@ main()
     cprintf("main: [CPU%d] is init kernel\n", cpuid());
 
     /* TODO: Use `memset` to clear the BSS section of our program. */
-    memset(edata, 0, end - edata);
+
+    acquire(&pgdrinitlock);
+    if (pgdrinitcnt == 0){
+        memset(edata, 0, end - edata);    
+        pgdrinitcnt = 1;
+    }
+    release(&pgdrinitlock);
+    
+    
+    /* TODO: Use `cprintf` to print "hello, world\n" */
     console_init();
     alloc_init();
     cprintf("main: allocator init success.\n");
