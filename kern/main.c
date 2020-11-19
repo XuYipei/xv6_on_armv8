@@ -4,12 +4,15 @@
 #include "string.h"
 #include "console.h"
 #include "kalloc.h"
+#include "vm.h"
 #include "trap.h"
 #include "timer.h"
 #include "spinlock.h"
 #include "proc.h"
 
 struct cpu cpus[NCPU];
+uint32_t pgdrinitcnt;
+struct spinlock pgdrlock;
 
 void
 main()
