@@ -136,5 +136,19 @@ syscall()
      * }
      */
     /* TODO: Your code here. */
+    
+    int code = proc->tf->r0;
+    switch (code)
+    {
+        case 0:
+            return sys_exec();
+            break;
+        case 1:
+            return sys_exec();
+            break;
+        default:
+            break;
+    }
+    
     return 0;
 }

@@ -54,6 +54,7 @@ trap(struct trapframe *tf)
             lesr(0);  /* Clear esr. */
             /* Jump to syscall to handle the system call from user process */
             /* TODO: Your code here. */
+            syscall();
             break;
         default:
 bad:

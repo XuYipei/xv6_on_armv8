@@ -32,7 +32,7 @@ struct context {
     uint64_t r1;
     uint64_t r2;
     uint64_t r3;
-    uint64_t x4;
+    uint64_t r4;
     uint64_t r5;
     uint64_t r6;
     uint64_t r7;
