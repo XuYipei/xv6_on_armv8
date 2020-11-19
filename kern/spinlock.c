@@ -1,5 +1,4 @@
 #include <stddef.h>
-#include <stdlib.h>
 #include "arm.h"
 #include "spinlock.h"
 #include "console.h"

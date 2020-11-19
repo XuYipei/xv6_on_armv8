@@ -11,6 +11,7 @@
 #include "clock.h"
 #include "timer.h"
 #include "proc.h"
+#include "spinlock.h"
 
 uint32_t irqinitcnt;
 struct spinlock irqinitlock;
