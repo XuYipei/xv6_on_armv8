@@ -67,19 +67,21 @@ proc_alloc()
         return(NULL);
     }
 
-    uint64_t *sp = p->kstack + PGSIZE;
+    uint64_t sp = p->kstack + PGSIZE;
     
     sp -= sizeof(struct trapframe);
     p->tf = (struct trapframe *)sp;
     memset(p->tf, 0, sizeof(struct trapframe));
     
     sp -= 8;
-    *sp = (uint64_t)trapret + 16;
+    *(uint64_t *)sp = (uint64_t)trapret;
+    sp -= 8;
+    *(uint64_t *)sp = ((uint64_t)p->kstack) + PGSIZE;
 
     sp -= sizeof(struct context);
     p->context = (struct context *)sp;
     memset(p->context, 0, sizeof(struct context));
-    p->context->r30 = (uint64_t)forkret;
+    p->context->r30 = (uint64_t)forkret + 8;
 
     release(&ptablelock);
 
@@ -142,11 +144,10 @@ scheduler()
                 continue;
 
             c->proc = p;
-            uvm_switch(p->pgdir);
+            uvm_switch(p);
 
             p->state = RUNNING;
 
-            cprintf("%llx %llx\n", p->context->r30, (uint64_t)forkret);
             swtch(&c->scheduler, p->context);
 
         }
