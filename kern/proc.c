@@ -268,7 +268,6 @@ exit()
     list_delete(&p->plist);
 
     sched();
-
 }
 
 /*
