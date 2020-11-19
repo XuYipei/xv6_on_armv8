@@ -17,6 +17,9 @@
 uint32_t irqinitcnt;
 struct spinlock irqinitlock;
 
+uint32_t irqinitcnt;
+struct spinlock irqinitlock;
+
 void
 irq_init()
 {
