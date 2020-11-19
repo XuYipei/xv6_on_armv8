@@ -41,8 +41,6 @@ alltraps:
      * Call trap(struct *trapframe).
      * Hint: The first argument is a stack pointer.
      */
-
-    /* TODO: Your code here. */
     
     mov x27, x0
     bl trap
@@ -55,8 +53,6 @@ trapret:
      * Hint: `ldp x1, x2, [sp], #16` is equivalent to first `pop x1`
      * and then `pop x2`.
      */
-
-    /* TODO: Your code here. */
 
     ldp x27, x28, [sp], #16
     ldp x29, x0, [sp], #16
