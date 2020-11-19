@@ -74,12 +74,14 @@ proc_alloc()
     memset(p->tf, 0, sizeof(struct trapframe));
     
     sp -= 8;
-    *sp = (uint64_t)trapret;
+    *sp = (uint64_t)trapret + 16;
 
     sp -= sizeof(struct context);
     p->context = (struct context *)sp;
     memset(p->context, 0, sizeof(struct context));
     p->context->r30 = (uint64_t)forkret;
+
+    release(&ptablelock);
 
     return p;
 }
