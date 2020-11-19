@@ -21,10 +21,19 @@ void swtch(struct context **, struct context *);
 /*
  * Initialize the spinlock for ptable to serialize the access to ptable
  */
+
+struct spinlock procinitlock;
+
 void
 proc_init()
 {
     /* TODO: Your code here. */
+    struct proc *p;
+    initlock(&procinitlock, "proc_init");
+
+    for (p = ptable.proc; p < ptable.proc + NPROC; p++) {
+        
+    }
 }
 
 /*
