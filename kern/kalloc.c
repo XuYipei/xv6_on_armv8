@@ -87,6 +87,10 @@ kalloc()
 
     if (kmem.free_list == NULL) 
         return(0);
+    
+    struct mcslock locallock;
+    // mcsacquire(&kmemlock, &locallock);
+    acquire(&kmemlock);
 
     struct run *r = kmem.free_list; 
     kmem.free_list = r->next;
@@ -107,6 +111,10 @@ check_free_list()
     struct run *p;
     if (!kmem.free_list)
         panic("kmem.free_list is a null pointer!\n");
+
+    struct mcslock locallock;
+    // mcsacquire(&kmemlock, &locallock);
+    acquire(&kmemlock);
 
     for (p = kmem.free_list; p; p = p->next) {
         assert((void *)p > (void *)end);

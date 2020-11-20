@@ -26,6 +26,9 @@ extern uint64_t *kpgdir;
  *     a pointer into the new page table page.
  */
 
+
+struct spinlock pgdrlock;
+
 uint64_t *
 pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
 {

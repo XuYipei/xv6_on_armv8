@@ -44,13 +44,23 @@ release(struct spinlock *lk)
     __atomic_clear(&lk->locked, __ATOMIC_RELEASE);
 }
 
+<<<<<<< HEAD
+=======
+struct mcslock zero = {(struct mcslock *)NULL, 0};
+
+
+>>>>>>> e06d4a5... pgdr
 void
 mcsacquire(struct mcslock *lk, struct mcslock *i){
     i->locked = 0;
     i->next = NULL;
+<<<<<<< HEAD
     struct mcslock *tail = lk->next;
     while (!__atomic_compare_exchange_n(&lk->next, &tail, i, 0, __ATOMIC_RELEASE, __ATOMIC_ACQUIRE))
         tail = lk->next;
+=======
+    struct mcslock *tail = __sync_lock_test_and_set(&lk->next, i, __ATOMIC_ACQUIRE);
+>>>>>>> e06d4a5... pgdr
     if (tail){
         i->locked = 1;
         tail->next = i;
@@ -61,6 +71,7 @@ mcsacquire(struct mcslock *lk, struct mcslock *i){
 
 void 
 mcsrelease(struct mcslock *lk, struct mcslock *i){
+<<<<<<< HEAD
     struct mcslock *x = i;
     if (__atomic_compare_exchange_n(&lk->next, &x, NULL, 0, __ATOMIC_RELEASE, __ATOMIC_ACQUIRE))
         return;
@@ -68,3 +79,12 @@ mcsrelease(struct mcslock *lk, struct mcslock *i){
         ;   
     i->next->locked = 0;
 }
+=======
+    if (i->next == NULL){
+        if (__sync_val_compare_and_swap(&lk->next, i, NULL)) 
+            return;
+    }
+    while (i->next == 0) ;
+    i->next->locked = 0;
+}
+>>>>>>> e06d4a5... pgdr

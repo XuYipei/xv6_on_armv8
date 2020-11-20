@@ -16,6 +16,9 @@ uint32_t pgdrinitcnt = 0, pcinitcnt;
 struct spinlock pgdrinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
 struct spinlock pcinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
 
+uint32_t pgdrinitcnt;
+struct spinlock pgdrlock;
+
 void
 main()
 {
@@ -60,7 +63,22 @@ main()
     lvbar(vectors);
     timer_init();
 
+<<<<<<< HEAD
     cprintf("main: [CPU%d] Init success.\n", cpuid());
     scheduler();
+=======
+    cprintf("CPU %d: Init success.\n", cpuid());
+
+
+    acquire(&pgdrlock);
+
+    if (pgdrinitcnt == 0){
+        
+        pgdrinitcnt = 1;
+    }
+
+    release(&pgdrlock);
+
+>>>>>>> e06d4a5... pgdr
     while (1) ;
 }
