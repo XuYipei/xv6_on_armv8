@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 OUTPUT_FORMAT("elf64-littleaarch64")
 OUTPUT_ARCH(aarch64)
 ENTRY(_start)
@@ -26,6 +25,7 @@ SECTIONS
 }
 =======
 }
+<<<<<<< HEAD
 =======
 SECTIONS
 {
@@ -44,3 +44,5 @@ SECTIONS
 }
 >>>>>>> c46d735... blabla
 >>>>>>> 4007444... lab5
+=======
+>>>>>>> f5c6bc2... lab5

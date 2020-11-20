@@ -1,7 +1,7 @@
-<<<<<<< HEAD
 .gdb_history
 obj
 .vscode
+<<<<<<< HEAD
 <<<<<<< HEAD
 user/bin
 =======
@@ -10,3 +10,5 @@ user/bin
 obj/
 >>>>>>> ed2d85b... Lab1, main.c
 >>>>>>> 4007444... lab5
+=======
+>>>>>>> f5c6bc2... lab5
