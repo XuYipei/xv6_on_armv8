@@ -12,12 +12,9 @@
 #include "proc.h"
 
 struct cpu cpus[NCPU];
-uint32_t pgdrinitcnt = 0, pcinitcnt;
+uint32_t pgdrinitcnt = 0, pcinitcnt = 0;
 struct spinlock pgdrinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
 struct spinlock pcinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
-
- uint32_t pgdrinitcnt = 0;
-struct spinlock pgdrinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
 
 void
 main()
@@ -48,15 +45,7 @@ main()
     }
     release(&pgdrinitlock);
     
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-    
-=======
-
->>>>>>> 0c2e05b... dev-lab4
     /* TODO: Use `cprintf` to print "hello, world\n" */
->>>>>>> e62f6d8... clhlock
     console_init();
     alloc_init();
     check_free_list();
@@ -73,14 +62,7 @@ main()
     lvbar(vectors);
     timer_init();
 
-<<<<<<< HEAD
     cprintf("main: [CPU%d] Init success.\n", cpuid());
     scheduler();
-=======
-    cprintf("CPU %d: Init success.\n", cpuid());
-
-    check_vm();
-
->>>>>>> e06d4a5... pgdr
     while (1) ;
 }
