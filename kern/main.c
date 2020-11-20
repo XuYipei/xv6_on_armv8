@@ -16,8 +16,8 @@ uint32_t pgdrinitcnt = 0, pcinitcnt;
 struct spinlock pgdrinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
 struct spinlock pcinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
 
-uint32_t pgdrinitcnt;
-struct spinlock pgdrlock;
+ uint32_t pgdrinitcnt = 0;
+struct spinlock pgdrinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
 
 void
 main()
@@ -47,6 +47,11 @@ main()
     }
     release(&pgdrinitlock);
     
+<<<<<<< HEAD
+=======
+    
+    /* TODO: Use `cprintf` to print "hello, world\n" */
+>>>>>>> e62f6d8... clhlock
     console_init();
     alloc_init();
     check_free_list();
@@ -69,15 +74,7 @@ main()
 =======
     cprintf("CPU %d: Init success.\n", cpuid());
 
-
-    acquire(&pgdrlock);
-
-    if (pgdrinitcnt == 0){
-        
-        pgdrinitcnt = 1;
-    }
-
-    release(&pgdrlock);
+    check_vm();
 
 >>>>>>> e06d4a5... pgdr
     while (1) ;
