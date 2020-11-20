@@ -19,48 +19,27 @@ struct {
 } kmem;
 
 uint32_t kmeminitcnt = 0;
-<<<<<<< HEAD
 struct spinlock kmemcslock, kmeminitlock;
 // struct mcslock kmemcslock, kmeminitlock;
-=======
-//struct spinlock kmemcslock, kmeminitlock;
-struct mcslock kmemcslock, kmeminitlock;
->>>>>>> 0c2e05b... dev-lab4
 
 void
 alloc_init()
 {
     struct mcslock locallock;
-<<<<<<< HEAD
     //mcsacquire(&kmeminitlock, &locallock);
     acquire(&kmeminitlock);
 
     if (kmeminitcnt != 0){
         //mcsrelease(&kmeminitlock, &locallock);
         release(&kmeminitlock);
-=======
-    //cprintf("acquire %llx\n", &locallock);
-    mcsacquire(&kmeminitlock, &locallock);
-    //acquire(&kmeminitlock);
-
-    if (kmeminitcnt != 0){
-        mcsrelease(&kmeminitlock, &locallock);
-        //release(&kmeminitlock);
->>>>>>> 0c2e05b... dev-lab4
         return;
     }
     kmeminitcnt = 1;
     
     free_range(end, P2V(PHYSTOP));
 
-<<<<<<< HEAD
     //mcsrelease(&kmeminitlock, &locallock);
     release(&kmeminitlock);
-=======
-    mcsrelease(&kmeminitlock, &locallock);
-    //cprintf("%llx release %llx %llx %x\n", &locallock, locallock.next, kmeminitlock.next, locallock.next->locked);
-    //release(&kmeminitlock);
->>>>>>> 0c2e05b... dev-lab4
 }
 
 void
@@ -75,24 +54,14 @@ kfree(char *v)
     r = (struct run *)v;
 
     struct mcslock locallock;
-<<<<<<< HEAD
     //mcsacquire(&kmemcslock, &locallock);
     acquire(&kmemcslock);
-=======
-    mcsacquire(&kmemcslock, &locallock);
-    //acquire(&kmemcslock);
->>>>>>> 0c2e05b... dev-lab4
 
     r->next = kmem.free_list;
     kmem.free_list = r;
 
-<<<<<<< HEAD
     //mcsrelease(&kmemcslock, &locallock);
     release(&kmemcslock);
-=======
-    mcsrelease(&kmemcslock, &locallock);
-    //release(&kmemcslock);
->>>>>>> 0c2e05b... dev-lab4
 }
 
 void
@@ -113,13 +82,8 @@ char *
 kalloc()
 {
     struct mcslock locallock;
-<<<<<<< HEAD
     //mcsacquire(&kmemcslock, &locallock);
     acquire(&kmemcslock);
-=======
-    mcsacquire(&kmemcslock, &locallock);
-    //acquire(&kmemcslock);
->>>>>>> 0c2e05b... dev-lab4
 
     if (kmem.free_list == NULL) 
         return(0);
@@ -127,14 +91,8 @@ kalloc()
     struct run *r = kmem.free_list; 
     kmem.free_list = r->next;
 
-<<<<<<< HEAD
     //mcsrelease(&kmemcslock, &locallock);
     release(&kmemcslock);
-=======
-    //cprintf("%llx %llx\n", (uint64_t)locallock.next);
-    mcsrelease(&kmemcslock, &locallock);
-    //release(&kmemcslock);
->>>>>>> 0c2e05b... dev-lab4
     
     return((char *)r);
 }
@@ -143,13 +101,8 @@ void
 check_free_list()
 {
     struct mcslock locallock;
-<<<<<<< HEAD
     //mcsacquire(&kmemcslock, &locallock);
     acquire(&kmemcslock);
-=======
-    mcsacquire(&kmemcslock, &locallock);
-    //acquire(&kmemcslock);
->>>>>>> 0c2e05b... dev-lab4
 
     struct run *p;
     if (!kmem.free_list)
@@ -159,12 +112,6 @@ check_free_list()
         assert((void *)p > (void *)end);
     }
 
-<<<<<<< HEAD
     //mcsrelease(&kmemcslock, &locallock);
     release(&kmemcslock);
 }
-=======
-    mcsrelease(&kmemcslock, &locallock);
-    //release(&kmemcslock);
-}
->>>>>>> 0c2e05b... dev-lab4
