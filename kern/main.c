@@ -41,19 +41,17 @@ main()
     if (pgdrinitcnt == 0){
         memset(edata, 0, end - edata);    
         pgdrinitcnt = 1;
-        cprintf("init mem in CPU %d.\n", cpuid());
     }
     release(&pgdrinitlock);
     
     console_init();
     alloc_init();
-    cprintf("main: allocator init success.\n");
     check_free_list();
 
-    proc_init();
+    irq_init();
     acquire(&pcinitlock);
     if (pcinitcnt == 0){
-        irq_init();
+        proc_init();
         user_init();
         pcinitcnt = 1;
     }
