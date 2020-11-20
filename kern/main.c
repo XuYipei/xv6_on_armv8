@@ -44,12 +44,17 @@ main()
     if (pgdrinitcnt == 0){
         memset(edata, 0, end - edata);    
         pgdrinitcnt = 1;
+        cprintf("init mem in CPU %d.\n", cpuid());
     }
     release(&pgdrinitlock);
     
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     
+=======
+
+>>>>>>> 0c2e05b... dev-lab4
     /* TODO: Use `cprintf` to print "hello, world\n" */
 >>>>>>> e62f6d8... clhlock
     console_init();
