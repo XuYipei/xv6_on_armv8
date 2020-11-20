@@ -41,7 +41,7 @@ main()
     if (pgdrinitcnt == 0){
         memset(edata, 0, end - edata);    
         pgdrinitcnt = 1;
-        cprintf("init mem in CPU %d.\n", cpuid());
+        cprintf("init bss in CPU %d.\n", cpuid());
     }
     release(&pgdrinitlock);
     
