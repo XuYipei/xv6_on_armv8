@@ -27,8 +27,6 @@ extern uint64_t *kpgdir;
  */
 
 
-struct spinlock pgdrlock;
-
 uint64_t *
 pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
 {
@@ -47,7 +45,6 @@ pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
                 return(NULL);
             }
             uint64_t address = kalloc();
-
             tb[idx] = (uint64_t)V2P(address);
             memset((char *)address, 0, PGSIZE);
             tb[idx] |= PTE_P | PTE_TABLE | PTE_AF | PTE_NORMAL;

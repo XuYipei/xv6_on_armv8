@@ -70,6 +70,7 @@ mcsacquire(struct mcslock *lk, struct mcslock *i){
 }
 
 void 
+<<<<<<< HEAD
 mcsrelease(struct mcslock *lk, struct mcslock *i){
 <<<<<<< HEAD
     struct mcslock *x = i;
@@ -80,11 +81,38 @@ mcsrelease(struct mcslock *lk, struct mcslock *i){
     i->next->locked = 0;
 }
 =======
+=======
+mrelease(struct mcslock *lk, struct mcslock *i){
+>>>>>>> e62f6d8... clhlock
     if (i->next == NULL){
         if (__sync_val_compare_and_swap(&lk->next, i, NULL)) 
             return;
     }
-    while (i->next == 0) ;
+    while (i->next == 0) 
+        ;
     i->next->locked = 0;
+<<<<<<< HEAD
 }
 >>>>>>> e06d4a5... pgdr
+=======
+    free(i);
+}
+
+
+void
+macquire(struct clhlock *lk, struct clhlock *i){
+    lk->locked = 1;
+    i->prev = __sync_lock_test_and_set(&lk->prev, i, __ATOMIC_ACQUIRE);
+    while (__atomic_load_n(&i->prev->locked))
+        ;
+}
+
+void 
+mrelease(struct clhlock *lk, struct clhlock *i){
+    if (i->prev){
+        free(i->prev);
+        i->prev = (struct clhlock *)0;
+    }
+    __atomic_store_n(i->locked, 0, __ATOMIC_RELEASE);
+}
+>>>>>>> e62f6d8... clhlock
