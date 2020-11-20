@@ -77,7 +77,7 @@ map_region(uint64_t *pgdir, void *va, uint64_t size, uint64_t pa, int64_t perm)
     char *vastart, *vaend, *v;
     vastart = ROUNDDOWN((uint64_t)va, PGSIZE);
     vaend = (uint64_t)va + size;
-    uint64_t tail = perm | PTE_P | PTE_TABLE | PTE_AF | PTE_NORMAL;
+    uint64_t tail = perm | PTE_P | PTE_TABLE | PTE_AF | PTE_NORMAL | PTE_USER | PTE_SH;
     for (v = vastart; v < vaend; v += PGSIZE, pa += PGSIZE){
         uint64_t *pte = pgdir_walk(pgdir, v, 1);
         uint64_t pa_ = tail | ((uint64_t)pa >> 12 << 12);
