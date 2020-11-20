@@ -143,11 +143,11 @@ syscall()
     int code = proc->tf->r0;
     switch (code)
     {
-        case 0:
+        case SYS_exec:
             return sys_exec();
             break;
-        case 1:
-            return sys_exec();
+        case SYS_exit:
+            return sys_exit();
             break;
         default:
             break;

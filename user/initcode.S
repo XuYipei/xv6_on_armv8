@@ -7,6 +7,8 @@
 # exec(init, argv)
 start:
     mov     x3, 2333
+    mov     x1, 3141
+    mov     x2, 97
     ldr     x1, =init
     ldr     x2, =argv
     mov     x0, #SYS_exec
