@@ -30,8 +30,8 @@ alloc_init()
     acquire(&kmeminitlock);
 
     if (kmeminitcnt != 0){
-        mcsrelease(&kmeminitlock, &locallock);
-        //release(&kmeminitlock);
+        //mcsrelease(&kmeminitlock, &locallock);
+        release(&kmeminitlock);
         return;
     }
     kmeminitcnt = 1;
