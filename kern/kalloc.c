@@ -50,7 +50,7 @@ kfree(char *v)
     if ((uint64_t)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
         panic("kfree\n");
 
-    memset(v, 1, PGSIZE);
+    // memset(v, 1, PGSIZE);
     r = (struct run *)v;
 
     struct mcslock locallock;
