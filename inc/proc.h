@@ -39,13 +39,6 @@ struct context {
     uint64_t r6;
     uint64_t r7;
     uint64_t r8;
-    uint64_t r9;
-    uint64_t r10;
-    uint64_t r11;
-    uint64_t r12;
-    uint64_t r13;
-    uint64_t r14;
-    uint64_t r15;
     uint64_t r16;
     uint64_t r17;
     uint64_t r18;
