@@ -164,31 +164,7 @@ uvm_init(uint64_t *pgdir, char *binary, int sz)
 void
 uvm_switch(struct proc *p)
 {
-<<<<<<< HEAD
     /* TODO: Your code here. */
     uint64_t r = V2P((uint64_t)p->pgdir);
     lttbr0(r);
-=======
-    uint64_t cpuif = cpuid();
-    uint64_t *ttbr = kalloc();
-    memset((char *)ttbr, 0, PGSIZE);
-    modify_ttbr_el1(ttbr, 0);
-
-    uint64_t *ttbr0, *ttbr1;
-    ttbr1 = (uint64_t *)load_ttbr_el1(1);
-    ttbr0 = (uint64_t *)load_ttbr_el1(0);
-
-    uint64_t va1, va0;
-    va1 = 0xFFFF000000006010 + (cpuif << 12);
-    *(uint64_t *)va1 = 233;
-
-    map_region(ttbr0, 0x0 + (cpuif << 12), PGSIZE, 0x6000 + (cpuif << 12), 0);
-    modify_ttbr_el1(ttbr0, 0);
-    va0 = 0x0000000000000010 + (cpuif << 12);
-
-    if (*(uint64_t *)va0 == *(uint64_t *)va1)
-        cprintf("CPU %llu: check vm pass.\n", cpuif);
-    else
-        cprintf("CPU %llu: check vm fail.\n", cpuif);
->>>>>>> 0c2e05b... dev-lab4
 }

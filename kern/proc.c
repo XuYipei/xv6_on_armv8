@@ -174,6 +174,15 @@ sched()
     
 }
 
+void
+yield()
+{
+    acquire(&ptablelock);
+    thiscpu->proc->state = RUNNABLE;
+    sched();
+    release(&ptablelock);
+}
+
 /*
  * A fork child will first swtch here, and then "return" to user space.
  */
