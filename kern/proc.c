@@ -22,18 +22,14 @@ void swtch(struct context **, struct context *);
  * Initialize the spinlock for ptable to serialize the access to ptable
  */
 
-struct spinlock procinitlock;
+struct spinlock ptablelock;
 
 void
 proc_init()
 {
     /* TODO: Your code here. */
     struct proc *p;
-    initlock(&procinitlock, "proc_init");
-
-    for (p = ptable.proc; p < ptable.proc + NPROC; p++) {
-        
-    }
+    initlock(&ptablelock, "ptable");
 }
 
 /*
@@ -47,6 +43,43 @@ proc_alloc()
 {
     struct proc *p;
     /* TODO: Your code here. */
+
+    acquire(&ptablelock);
+
+    uint32_t find = 0;
+    for (p = ptable.proc; p < ptable.proc + NPROC; p++) {
+        if (p -> state == UNUSED){
+            find = 1;
+            break;
+        }
+    }
+    if (!find) {
+        release(&ptablelock);
+        return(NULL);
+    }
+
+    p->state  = EMBRYO;
+    p->pid    = nextpid++;
+    p->kstack = kalloc();
+    if (p->kstack == NULL) {
+        p -> state = UNUSED;
+        release(&ptablelock);
+        return(NULL);
+    }
+
+    uint64_t *sp = p->kstack + PGSIZE;
+    
+    sp -= sizeof(struct trapframe);
+    p->tf = (struct trapframe *)sp;
+    memset(p->tf, 0, sizeof(struct trapframe));
+    
+    sp -= 8;
+    *sp = (uint64_t)trapret;
+
+    sp -= sizeof(struct context);
+    p->context = (struct context *)sp;
+    memset(p->context, 0, sizeof(struct context));
+    p->context->r30 = (uint64_t)forkret;
 
     return p;
 }
@@ -65,6 +98,20 @@ user_init()
     extern char _binary_obj_user_initcode_start[], _binary_obj_user_initcode_size[];
     
     /* TODO: Your code here. */
+    p = proc_alloc();
+    initproc = p;
+
+    if ((p->pgdir = kalloc()) == NULL) {
+        panic("userinit");
+    }
+    
+    uvm_init(p->pgdir, _binary_obj_user_initcode_start, _binary_obj_user_initcode_size);
+    p->tf->sp  = PGSIZE;
+
+    p->sz = PGSIZE;
+    memcpy(p->name, "initcode", sizeof(p->name));
+    
+    p->state = RUNNABLE;
 }
 
 /*
@@ -86,6 +133,22 @@ scheduler()
     for (;;) {
         /* Loop over process table looking for process to run. */
         /* TODO: Your code here. */
+        acquire(&ptablelock);
+        
+        for (p = ptable.proc; p < ptable.proc + NPROC; p++) {
+            if (p->state != RUNNABLE)
+                continue;
+
+            c->proc = p;
+            uvm_switch(p->pgdir);
+
+            p->state = RUNNING;
+
+            swtch(&c->scheduler, p->context);
+
+        }
+
+        release(&ptablelock);
     }
 }
 
@@ -96,6 +159,15 @@ void
 sched()
 {
     /* TODO: Your code here. */
+    
+    if (!holding(&ptablelock)) {
+        panic("sched");
+    }
+
+    struct cpu *c = thiscpu;
+
+    swtch(&c->proc->context, c->scheduler);
+    
 }
 
 /*
@@ -105,6 +177,13 @@ void
 forkret()
 {
     /* TODO: Your code here. */
+    release(&ptablelock);
+}
+
+void
+wakeup(struct proc *p)
+{
+    p->state = RUNNABLE;
 }
 
 /*
@@ -117,6 +196,20 @@ exit()
 {
     struct proc *p = thiscpu->proc;
     /* TODO: Your code here. */
+        acquire(&ptablelock);
+
+    wakeup(p->parent);
+
+    struct proc *pc;
+    for (pc = &ptable.proc; pc < ptable.proc[NPROC]; pc++) {
+        if (pc->parent == p) {
+            pc->parent = initproc;
+        }
+    }
+
+    p->state = ZOMBIE;
+    sched();
+
 }
 
 /*

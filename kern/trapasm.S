@@ -49,8 +49,6 @@ alltraps:
      * Call trap(struct *trapframe).
      * Hint: The first argument is a stack pointer.
      */
-
-    /* TODO: Your code here. */
     
     mov x27, x0
     bl trap

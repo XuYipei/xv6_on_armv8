@@ -129,6 +129,14 @@ uint64_t *
 pgdir_init()
 {
     /* TODO: Your code here. */
+
+    uint64_t *pgdir =  kalloc();
+
+    if (pgdir == NULL) {
+        panic("pgdirinit");
+    }
+
+    return(pgdir);
 }
 
 /* 
@@ -141,6 +149,11 @@ void
 uvm_init(uint64_t *pgdir, char *binary, int sz)
 {
     /* TODO: Your code here. */
+
+    char *r = kalloc();
+    memset(r, 0, PGSIZE);
+    map_region(pgdir, 0, PGSIZE, V2P(r), PTE_RW);
+    memmove(r, binary, sz);
 }
 
 /*
@@ -150,4 +163,6 @@ void
 uvm_switch(struct proc *p)
 {
     /* TODO: Your code here. */
+    uint64_t r = V2P((uint64_t)p->pgdir);
+    lttbr0(r);
 }
