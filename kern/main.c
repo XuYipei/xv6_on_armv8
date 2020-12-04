@@ -30,32 +30,34 @@ main()
      * called once, and use lock to guarantee this.
      */
     /* TODO: Your code here. */
-
-    cprintf("main: [CPU%d] is init kernel\n", cpuid());
-
-    /* TODO: Use `memset` to clear the BSS section of our program. */
-
-    acquire(&pgdrinitlock);
-    if (pgdrinitcnt == 0){
-        memset(edata, 0, end - edata);    
-        pgdrinitcnt = 1;
-        cprintf("init mem in CPU %d.\n", cpuid());
-    }
-    release(&pgdrinitlock);
     
-    console_init();
-    alloc_init();
-    cprintf("main: allocator init success.\n");
-    check_free_list();
+    if (cpuid() == 0){
+        cprintf("main: [CPU%d] is init kernel\n", cpuid());
 
-    irq_init();
-    proc_init();
-    user_init();
+        /* TODO: Use `memset` to clear the BSS section of our program. */
 
-    lvbar(vectors);
-    timer_init();
+        acquire(&pgdrinitlock);
+        if (pgdrinitcnt == 0){
+            memset(edata, 0, end - edata);    
+            pgdrinitcnt = 1;
+            cprintf("init mem in CPU %d.\n", cpuid());
+        }
+        release(&pgdrinitlock);
+        
+        console_init();
+        alloc_init();
+        cprintf("main: allocator init success.\n");
+        check_free_list();
 
-    cprintf("main: [CPU%d] Init success.\n", cpuid());
-    scheduler();
-    while (1) ;
+        irq_init();
+        proc_init();
+        user_init();
+
+        lvbar(vectors);
+        timer_init();
+
+        cprintf("main: [CPU%d] Init success.\n", cpuid());
+        scheduler();
+        while (1) ;
+    }
 }

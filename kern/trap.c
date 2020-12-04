@@ -12,6 +12,7 @@
 #include "timer.h"
 #include "proc.h"
 #include "sd.h"
+#include "spinlock.h"
 
 uint32_t irqinitcnt;
 struct spinlock irqinitlock;

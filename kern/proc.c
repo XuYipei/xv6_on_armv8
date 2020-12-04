@@ -144,6 +144,7 @@ scheduler()
 
             p->state = RUNNING;
 
+            cprintf("%llx %llx\n", p->context->r30, (uint64_t)forkret);
             swtch(&c->scheduler, p->context);
 
         }
@@ -201,7 +202,7 @@ exit()
     wakeup(p->parent);
 
     struct proc *pc;
-    for (pc = &ptable.proc; pc < ptable.proc[NPROC]; pc++) {
+    for (pc = &ptable.proc; pc < &ptable.proc[NPROC]; pc++) {
         if (pc->parent == p) {
             pc->parent = initproc;
         }
