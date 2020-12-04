@@ -118,6 +118,7 @@ panic(const char *fmt, ...)
 {
     va_list ap;
 
+<<<<<<< HEAD
     acquire(&conslock);
     if (panicked < 0) panicked = cpuid();
     else {
@@ -131,4 +132,14 @@ panic(const char *fmt, ...)
 
     cprintf("%s:%d: kernel panic at cpu %d.\n", __FILE__, __LINE__, cpuid());
     while (1) ;
+=======
+    va_start(ap, fmt);
+    vprintfmt(uart_putchar, fmt, ap);
+    va_end(ap);
+
+    cprintf("%s:%d: kernel panic.\n", __FILE__, __LINE__);
+    panicked = 1;
+    while (1)
+        ;
+>>>>>>> b78ad0f... blabla
 }
