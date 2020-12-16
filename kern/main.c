@@ -10,6 +10,7 @@
 #include "timer.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sd.h"
 
 struct cpu cpus[NCPU];
 uint32_t pgdrinitcnt = 0, pcinitcnt = 0;
@@ -32,37 +33,41 @@ main()
      */
     /* TODO: Your code here. */
     
-    
-    cprintf("main: [CPU%d] is init kernel\n", cpuid());
+    if (cpuid() == 0){
+        cprintf("main: [CPU%d] is init kernel\n", cpuid());
 
-    /* TODO: Use `memset` to clear the BSS section of our program. */
+        /* TODO: Use `memset` to clear the BSS section of our program. */
 
-    acquire(&pgdrinitlock);
-    if (pgdrinitcnt == 0){
-        memset(edata, 0, end - edata);    
-        pgdrinitcnt = 1;
-        cprintf("init bss in CPU %d.\n", cpuid());
+        acquire(&pgdrinitlock);
+        if (pgdrinitcnt == 0){
+            memset(edata, 0, end - edata);    
+            pgdrinitcnt = 1;
+            cprintf("init bss in CPU %d.\n", cpuid());
+        }
+        release(&pgdrinitlock);
+        
+        /* TODO: Use `cprintf` to print "hello, world\n" */
+        console_init();
+        alloc_init();
+        check_free_list();
+
+        irq_init();
+        acquire(&pcinitlock);
+        if (pcinitcnt == 0){
+            proc_init();
+            user_init();
+            pcinitcnt = 1;
+        }
+        release(&pcinitlock);
+
+        lvbar(vectors);
+        timer_init();
+
+        sd_init();
+        sd_test();        
+
+        cprintf("main: [CPU%d] Init success.\n", cpuid());
+        scheduler();
+        while (1) ;
     }
-    release(&pgdrinitlock);
-    
-    /* TODO: Use `cprintf` to print "hello, world\n" */
-    console_init();
-    alloc_init();
-    check_free_list();
-
-    irq_init();
-    acquire(&pcinitlock);
-    if (pcinitcnt == 0){
-        proc_init();
-        user_init();
-        pcinitcnt = 1;
-    }
-    release(&pcinitlock);
-
-    lvbar(vectors);
-    timer_init();
-
-    cprintf("main: [CPU%d] Init success.\n", cpuid());
-    scheduler();
-    while (1) ;
 }

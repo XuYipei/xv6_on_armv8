@@ -21,6 +21,8 @@
 #include "console.h"
 
 #include "proc.h"
+#include "stddef.h"
+#include "spinlock.h"
 
 // Private functions.
 static void sd_start(struct buf *b);
@@ -490,6 +492,9 @@ static int sdBaseClock;
 
 #define MBX_PROP_CLOCK_EMMC 1
 
+struct spinlock sdlock;
+struct list_head sdque;
+
 /*
  * Initialize SD card and parse MBR.
  * 1. The first partition should be FAT and is used for booting.
@@ -506,6 +511,9 @@ sd_init()
      */
     /* TODO: Your code here. */
 
+    list_init(&sdque);
+    initlock(&sdlock, "sd");    
+
     sdInit();
     assert(sdCard.init);
 
@@ -516,7 +524,19 @@ sd_init()
      * Hint: Maybe need to use sd_start for reading, and
      * sdWaitForInterrupt for clearing certain interrupt.
      */
+    
+    struct buf job;
+    job.flags   = 0;
+    job.blockno = 0;
+    job.blist   = (struct list_head){0, 0};
 
+    acquire(&sdlock);
+
+    sd_start(&job);
+    sdWaitForInterrupt(INT_DATA_DONE);
+
+    release(&sdlock);
+    
     /* TODO: Your code here. */
 }
 
@@ -574,9 +594,6 @@ sd_intr()
 {
     /* TODO: Your code here. */
 
-    /* Hint: Example pseudocode is provided as below. */
-
-    /*
     acquire(&sdlock);
     if (list_empty(&sdque)) {
         cprintf("sd receive redundent interrupt 0x%x, omitted.\n", *EMMC_INTERRUPT);
@@ -589,7 +606,7 @@ sd_intr()
         *EMMC_INTERRUPT = i; // Clear interrupt.
         disb();
 
-        struct buf *b = list_front(&sdque);
+        struct buf *b = (struct buf *) container_of(list_front(&sdque), struct buf, blist);
         int write = b->flags & B_DIRTY;
         if (!((write && i == INT_DATA_DONE) || (!write && INT_READ_RDY))) {
             sd_start(b);
@@ -613,7 +630,6 @@ sd_intr()
         }
     }
     release(&sdlock);
-    */
 }
 
 /*
@@ -626,6 +642,15 @@ sdrw(struct buf *b)
 {
     /* TODO: Your code here. */
 
+    b->flags |= B_VALID;
+    b->flags &= ~B_DIRTY;
+    
+    acquire(&sdlock);
+
+    sd_start(b);
+    sdWaitForInterrupt(INT_DATA_DONE);
+
+    release(&sdlock);
 }
 
 /* SD card test and benchmark. */

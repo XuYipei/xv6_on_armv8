@@ -193,11 +193,6 @@ forkret()
     release(&ptablelock);
 }
 
-void
-wakeup(struct proc *p)
-{
-    p->state = RUNNABLE;
-}
 
 /*
  * Exit the current process.  Does not return.
@@ -209,9 +204,10 @@ exit()
 {
     struct proc *p = thiscpu->proc;
     /* TODO: Your code here. */
-        acquire(&ptablelock);
+    
+    acquire(&ptablelock);
 
-    wakeup(p->parent);
+    p->parent->state = RUNNABLE;
 
     struct proc *pc;
     for (pc = &ptable.proc; pc < &ptable.proc[NPROC]; pc++) {
@@ -233,6 +229,25 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
     /* TODO: Your code here. */
+    
+    if (lk != &ptablelock && lk){
+        release(lk);
+        acquire(&ptablelock);
+    }
+
+    struct proc *p = thiscpu->proc;
+    
+    p->chan = chan;
+    p->state = SLEEPING;
+
+    sched();
+
+    p->chan = 0; // ??
+
+    if (lk != &ptablelock && lk){
+        acquire(lk);
+        release(&ptablelock);
+    }
 }
 
 /* Wake up all processes sleeping on chan. */
@@ -240,6 +255,15 @@ void
 wakeup(void *chan)
 {
     /* TODO: Your code here. */
+    acquire(&ptablelock);
+
+    struct proc *p;
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+        if (p->chan == chan && p->state == SLEEPING) {
+            p->state = RUNNABLE;
+        }
+
+    release(&ptablelock);
 }
 
 /* Give up CPU. */
