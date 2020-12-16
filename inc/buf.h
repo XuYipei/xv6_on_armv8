@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "list.h"
+
 #define BSIZE   512
 
 #define B_VALID 0x2     /* Buffer has been read from disk. */
@@ -15,6 +17,7 @@ struct buf {
 
     /* TODO: Your code here. */
 
+    struct list_head blist;
 };
 
 #endif
