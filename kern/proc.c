@@ -6,10 +6,15 @@
 #include "string.h"
 #include "vm.h"
 #include "mmu.h"
+#include "list.h"
+
+#define HASHENTRIES 17
 
 struct {
     struct proc proc[NPROC];
 } ptable;
+
+struct list_head hashmp[HASHENTRIES];
 
 static struct proc *initproc;
 
@@ -29,6 +34,9 @@ proc_init()
 {
     /* TODO: Your code here. */
     struct proc *p;
+    for (struct list_head *p = hashmp; p < hashmp + HASHENTRIES; p++) {
+        list_init(p);
+    }
     initlock(&ptablelock, "ptable");
 }
 
@@ -127,6 +135,9 @@ user_init()
  *  - eventually that process transfers control
  *        via swtch back to the scheduler.
  */
+
+int sleepcpu = -1;
+
 void
 scheduler()
 {
@@ -138,10 +149,12 @@ scheduler()
         /* Loop over process table looking for process to run. */
         /* TODO: Your code here. */
         acquire(&ptablelock);
-        
+
         for (p = ptable.proc; p < ptable.proc + NPROC; p++) {
             if (p->state != RUNNABLE)
                 continue;
+
+            // cprintf("%d\n", cpuid());
 
             c->proc = p;
             uvm_switch(p);
@@ -178,6 +191,7 @@ void
 yield()
 {
     acquire(&ptablelock);
+    
     thiscpu->proc->state = RUNNABLE;
     sched();
     release(&ptablelock);
@@ -230,9 +244,9 @@ sleep(void *chan, struct spinlock *lk)
 {
     /* TODO: Your code here. */
     
-    if (lk != &ptablelock && lk){
-        release(lk);
+    if (lk != &ptablelock){
         acquire(&ptablelock);
+        if (lk) release(lk);
     }
 
     struct proc *p = thiscpu->proc;
@@ -240,13 +254,16 @@ sleep(void *chan, struct spinlock *lk)
     p->chan = chan;
     p->state = SLEEPING;
 
+    uint64_t entry = (uint64_t)chan % HASHENTRIES;
+    list_push_back(&hashmp[entry], &(p->clist));
+
     sched();
 
-    p->chan = 0; // ??
+    p->chan = 0; 
 
-    if (lk != &ptablelock && lk){
-        acquire(lk);
+    if (lk != &ptablelock){
         release(&ptablelock);
+        if (lk) acquire(lk);
     }
 }
 
@@ -256,13 +273,45 @@ wakeup(void *chan)
 {
     /* TODO: Your code here. */
     acquire(&ptablelock);
-
+    /*
+    int change = 0;
     struct proc *p;
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
         if (p->chan == chan && p->state == SLEEPING) {
             p->state = RUNNABLE;
+            change = 1;
+        }else{
+            if (p->chan == chan)
+                cprintf("=======================================\n");
         }
-
+    */
+    /*
+    struct proc *p = ptable.proc;
+    if (p->chan == chan && p->state == SLEEPING) 
+        p->state = RUNNABLE;            
+    */
+    
+    uint64_t entry = (uint64_t)chan % HASHENTRIES;
+    struct list_head *ery = &hashmp[entry];
+    for (struct list_head* l = ery->next; l != ery; l = l->next) {
+        struct proc *p = container_of(l, struct proc, clist);
+        if (p->chan == chan && p->state == SLEEPING) {
+            p->state = RUNNABLE;
+            list_delete(l);
+            break;
+        }else{
+            // if (p->chan == chan)
+            //     cprintf("=======================================\n");
+        }
+    }
+    
     release(&ptablelock);
 }
 
+uint64_t 
+currentel()
+{
+    uint64_t t;
+    asm volatile ("mrs %[cnt], CurrentEL" : [cnt]"=r"(t));
+    return t;
+}

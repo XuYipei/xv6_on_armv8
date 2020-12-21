@@ -6,13 +6,14 @@
 
 # exec(init, argv)
 start:
-    mov     x3, 2333
-    mov     x1, 3141
-    mov     x2, 97
     ldr     x1, =init
     ldr     x2, =argv
     mov     x0, #SYS_exec
     svc     0x00
+
+while1:
+    mov     x5, 0
+    b       while1 
 
 exit:
     mov     x0, #SYS_exit

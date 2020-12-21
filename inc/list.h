@@ -35,4 +35,7 @@ list_empty(struct list_head *);
 void 
 list_init(struct list_head *);
 
+void
+list_delete(struct list_head *);
+
 #endif

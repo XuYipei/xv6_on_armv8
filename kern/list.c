@@ -63,3 +63,10 @@ void
 list_init(struct list_head *que){
     que->next = que->prev = que;
 }
+
+void 
+list_delete(struct list_head *que) {
+    que->prev->next = que->next;
+    que->next->prev = que->prev;
+    que->next = que->prev = NULL;
+}

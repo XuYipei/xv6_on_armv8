@@ -492,7 +492,7 @@ static int sdBaseClock;
 
 #define MBX_PROP_CLOCK_EMMC 1
 
-struct spinlock sdlock;
+volatile struct spinlock sdlock, sdtestlock;
 struct list_head sdque;
 
 /*
@@ -512,7 +512,8 @@ sd_init()
     /* TODO: Your code here. */
 
     list_init(&sdque);
-    initlock(&sdlock, "sd");    
+    initlock(&sdlock, "sd");
+    initlock(&sdtestlock, "sdtest");
 
     sdInit();
     assert(sdCard.init);
@@ -530,12 +531,22 @@ sd_init()
     job.blockno = 0;
     job.blist   = (struct list_head){0, 0};
 
-    acquire(&sdlock);
-
+    // list_push_back(&sdque, &job.blist);
     sd_start(&job);
+    sdWaitForInterrupt(INT_READ_RDY);
+
+    for (int done = 0; done < 128; )
+        job.data[done++] = *EMMC_DATA;
+
     sdWaitForInterrupt(INT_DATA_DONE);
 
-    release(&sdlock);
+    char *d = job.data;
+    d += 0x1CE;
+    uint32_t LBA = *(uint32_t *)d; 
+    d += 4;
+    uint32_t size  = *(uint32_t *)d;
+
+    cprintf(" - LBA = %x, SIZE = %x\n", LBA, size);
     
     /* TODO: Your code here. */
 }
@@ -557,7 +568,7 @@ sd_start(struct buf *b)
     int bno = sdCard.type == SD_TYPE_2_HC ? b->blockno : b->blockno << 9;
     int write = b->flags & B_DIRTY;
 
-    cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, bno, write);
+    // cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, bno, write);
 
     disb();
     // Ensure that any data operation has completed before doing the transfer.
@@ -595,6 +606,9 @@ sd_intr()
     /* TODO: Your code here. */
 
     acquire(&sdlock);
+
+//    cprintf("Interrupt begin\n");
+
     if (list_empty(&sdque)) {
         cprintf("sd receive redundent interrupt 0x%x, omitted.\n", *EMMC_INTERRUPT);
     } else {
@@ -608,6 +622,9 @@ sd_intr()
 
         struct buf *b = (struct buf *) container_of(list_front(&sdque), struct buf, blist);
         int write = b->flags & B_DIRTY;
+        
+        struct list_head *l = list_front(&sdque);
+
         if (!((write && i == INT_DATA_DONE) || (!write && INT_READ_RDY))) {
             sd_start(b);
             // FIXME: don't panic
@@ -629,6 +646,9 @@ sd_intr()
                 sd_start(list_front(&sdque));
         }
     }
+
+//    cprintf("Interrupt end\n");
+
     release(&sdlock);
 }
 
@@ -642,24 +662,38 @@ sdrw(struct buf *b)
 {
     /* TODO: Your code here. */
 
-    b->flags |= B_VALID;
-    b->flags &= ~B_DIRTY;
-    
     acquire(&sdlock);
-
-    sd_start(b);
-    sdWaitForInterrupt(INT_DATA_DONE);
+    
+    if (list_empty(&sdque)) {
+        list_push_back(&sdque, &b->blist);
+        sd_start(b);
+        sleep(b, &sdlock);
+    } else {
+        list_push_back(&sdque, &b->blist);
+        sleep(b, &sdlock);
+    }
 
     release(&sdlock);
 }
+
+int sd_times;
 
 /* SD card test and benchmark. */
 void
 sd_test()
 {
+    acquire(&sdtestlock);
+    if (sd_times){
+        release(&sdtestlock);
+        return;
+    }
+    sd_times = 1;
+    release(&sdtestlock);
+
     static struct buf b[1 << 11];
+    // static struct buf b[1 << 6];
     int n = sizeof(b) / sizeof(b[0]);
-    int mb = (n * BSIZE) >> 20;
+    int mb = (n * BSIZE) >> 10;
     assert(mb);
     int64_t f, t;
     asm volatile ("mrs %[freq], cntfrq_el0" : [freq]"=r"(f));
@@ -689,7 +723,11 @@ sd_test()
         // Restore previous value.
         b[0].flags = B_DIRTY;
         sdrw(&b[0]);
+
+        // cprintf("finish %d %d\n", i, n);
     }
+
+    cprintf("-------------------------------------------------\n");
 
     // Read benchmark
     disb();
@@ -703,7 +741,7 @@ sd_test()
     disb();
     t = timestamp() - t;
     disb();
-    cprintf("- read %lldB (%lldMB), t: %lld cycles, speed: %lld.%lld MB/s\n",
+    cprintf("- read %lldB (%lldKB), t: %lld cycles, speed: %lld.%lld KB/s\n",
             n*BSIZE, mb, t, mb * f / t, (mb*f*10/t) % 10);
 
     // Write benchmark
@@ -719,7 +757,7 @@ sd_test()
     t = timestamp() - t;
     disb();
 
-    cprintf("- write %lldB (%lldMB), t: %lld cycles, speed: %lld.%lld MB/s\n",
+    cprintf("- write %lldB (%lldKB), t: %lld cycles, speed: %lld.%lld KB/s\n",
             n*BSIZE, mb, t, mb * f / t, (mb*f*10/t) % 10);
 }
 

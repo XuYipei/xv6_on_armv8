@@ -2,6 +2,7 @@
 #include "proc.h"
 #include "syscall.h"
 #include "console.h"
+#include "sd.h"
 
 /* 
  * User code makes a system call with SVC, system call number in r0.
@@ -141,6 +142,7 @@ syscall()
     switch (code)
     {
         case SYS_exec:
+            sd_test();
             return sys_exec();
             break;
         case SYS_exit:
