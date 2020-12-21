@@ -5,6 +5,8 @@
 
 #include "arm.h"
 #include "trap.h"
+#include "spinlock.h"
+#include "list.h"
 
 #define NCPU   4        /* maximum number of CPUs */
 #define NPROC 64        /* maximum number of processes */
@@ -70,9 +72,13 @@ struct proc {
     void *chan;              /* If non-zero, sleeping on chan           */
     int killed;              /* If non-zero, have been killed           */
     char name[16];           /* Process name (debugging)                */
+<<<<<<< HEAD
 
     struct file *ofile[NOFILE];  /* Open files */
     struct inode *cwd;           /* Current directory */
+=======
+    struct list_head clist; 
+>>>>>>> 02014c9... sd
 };
 
 static inline struct proc *
@@ -90,4 +96,13 @@ void exit();
 int fork();
 int wait();
 
+<<<<<<< HEAD
 #endif
+=======
+void wakeup(void *);
+void sleep(void *, struct spinlock *);
+
+uint64_t currentel();
+
+#endif
+>>>>>>> 02014c9... sd

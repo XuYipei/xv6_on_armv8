@@ -28,5 +28,6 @@ timer_reset()
 void
 timer()
 {
-    cprintf("timer: cpu %d timer.\n", cpuid());
+    // cprintf("timer: cpu %d timer.\n", cpuid());
+    yield();
 }
