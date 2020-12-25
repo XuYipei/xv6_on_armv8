@@ -133,7 +133,7 @@ user_init()
     p->clist.next = p->clist.prev = 0;
     p->plist.next = p->plist.prev = 0;
 
-    p->prio  = 2;
+    p->prio  = 3;
     list_push_back(&prioque[p->prio], &p->plist);
 }
 
@@ -217,12 +217,14 @@ yield()
     p->state = RUNNABLE;
 
     p->intr += 1;
+    if (p->intr == (1 << 5) && p->prio == 3)
+        p->prio = 2, p->intr = 0;
     if (p->intr == (1 << 10) && p->prio == 2)
         p->prio = 1, p->intr = 0;
     if (p->intr == (1 << 15) && p->prio == 1)
         p->prio = 0, p->intr = 0;
-    if (p->intr == (1 << 20) && p->prio == 0)
-        p->prio = 1, p->intr = 0;
+    // if (p->intr == (1 << 20) && p->prio == 0)
+    //     p->prio = 0, p->intr = 3;
 
     // list_delete(&p->plist);
     list_push_back(&prioque[p->prio], &p->plist);
