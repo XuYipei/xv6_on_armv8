@@ -642,8 +642,14 @@ sd_intr()
             wakeup(b);
 
             list_pop_front(&sdque);
-            if (!list_empty(&sdque))
-                sd_start(list_front(&sdque));
+            if (!list_empty(&sdque)){
+                struct buf * head = (struct buf *) container_of(list_front(&sdque), struct buf, blist);
+                if (head->blockno != 512){
+                    int deb=0;
+                    // cprintf("ERROR!!!!!\n");
+                }
+                sd_start(head);
+            }
         }
     }
 
@@ -682,17 +688,20 @@ int sd_times;
 void
 sd_test()
 {
+    int offset = 0;
     acquire(&sdtestlock);
-    if (sd_times){
+    if (sd_times > 0){
         release(&sdtestlock);
         return;
     }
-    sd_times = 1;
+    offset = sd_times;
+    sd_times += 1;
     release(&sdtestlock);
 
-    static struct buf b[1 << 11];
+    static struct buf bs[2][1 << 11];
+    struct buf* b = bs[offset];
     // static struct buf b[1 << 6];
-    int n = sizeof(b) / sizeof(b[0]);
+    int n = sizeof(bs[0]) / sizeof(b[0]);
     int mb = (n * BSIZE) >> 10;
     assert(mb);
     int64_t f, t;
@@ -709,7 +718,7 @@ sd_test()
 
         // Write some value.
         b[i].flags = B_DIRTY;
-        b[i].blockno = i;
+        b[i].blockno = i + n * offset;
         for (int j = 0; j < BSIZE; j++)
             b[i].data[j] = i*j & 0xFF;
         sdrw(&b[i]);
