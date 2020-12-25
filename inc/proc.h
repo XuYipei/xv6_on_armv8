@@ -71,6 +71,8 @@ struct proc {
     int killed;              /* If non-zero, have been killed           */
     char name[16];           /* Process name (debugging)                */
     struct list_head clist; 
+    struct list_head plist;
+    int prio, intr;
 };
 
 void proc_init();
@@ -83,5 +85,7 @@ void wakeup(void *);
 void sleep(void *, struct spinlock *);
 
 uint64_t currentel();
+
+void proc_disp();
 
 #endif

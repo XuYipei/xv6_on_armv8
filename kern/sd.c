@@ -727,8 +727,6 @@ sd_test()
         // cprintf("finish %d %d\n", i, n);
     }
 
-    cprintf("-------------------------------------------------\n");
-
     // Read benchmark
     disb();
     t = timestamp();

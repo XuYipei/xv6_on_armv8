@@ -9,12 +9,14 @@
 #include "list.h"
 
 #define HASHENTRIES 17
+#define PRIOENTRIES 4
 
 struct {
     struct proc proc[NPROC];
 } ptable;
 
 struct list_head hashmp[HASHENTRIES];
+struct list_head prioque[PRIOENTRIES];
 
 static struct proc *initproc;
 
@@ -35,6 +37,9 @@ proc_init()
     /* TODO: Your code here. */
     struct proc *p;
     for (struct list_head *p = hashmp; p < hashmp + HASHENTRIES; p++) {
+        list_init(p);
+    }
+    for (struct list_head *p = prioque; p < hashmp + PRIOENTRIES; p++) {
         list_init(p);
     }
     initlock(&ptablelock, "ptable");
@@ -124,6 +129,12 @@ user_init()
     memcpy(p->name, "initcode", sizeof(p->name));
     
     p->state = RUNNABLE;
+    
+    p->clist.next = p->clist.prev = 0;
+    p->plist.next = p->plist.prev = 0;
+
+    p->prio  = 2;
+    list_push_back(&prioque[p->prio], &p->plist);
 }
 
 /*
@@ -149,21 +160,31 @@ scheduler()
         /* Loop over process table looking for process to run. */
         /* TODO: Your code here. */
         acquire(&ptablelock);
+        
+        // cprintf("SCHEDULER TURN BEGIN\n");
 
-        for (p = ptable.proc; p < ptable.proc + NPROC; p++) {
-            if (p->state != RUNNABLE)
-                continue;
+        for (struct list_head* l = &prioque[PRIOENTRIES - 1]; l >= prioque; l--) 
+            if (!list_empty(l)) {
+                // cprintf("FIND PROC\n");
 
-            // cprintf("%d\n", cpuid());
+                struct list_head *pl = list_front(l);
+                p = container_of(pl, struct proc, plist);
 
-            c->proc = p;
-            uvm_switch(p);
+                c->proc = p;
+                uvm_switch(p);
 
-            p->state = RUNNING;
+                p->state = RUNNING;
+                list_delete(&p->plist);
 
-            swtch(&c->scheduler, p->context);
+                // cprintf("SWTCH ENTER\n");
 
-        }
+                swtch(&c->scheduler, p->context);
+
+                // cprintf("SWTCH RETURN\n");
+                break;
+            }
+
+        // cprintf("SCHEDULER TURN END\n");
 
         release(&ptablelock);
     }
@@ -192,7 +213,20 @@ yield()
 {
     acquire(&ptablelock);
     
-    thiscpu->proc->state = RUNNABLE;
+    struct proc* p = thiscpu->proc;
+    p->state = RUNNABLE;
+
+    p->intr += 1;
+    if (p->intr == (1 << 10) && p->prio == 2)
+        p->prio = 1, p->intr = 0;
+    if (p->intr == (1 << 15) && p->prio == 1)
+        p->prio = 0, p->intr = 0;
+    if (p->intr == (1 << 20) && p->prio == 0)
+        p->prio = 1, p->intr = 0;
+
+    // list_delete(&p->plist);
+    list_push_back(&prioque[p->prio], &p->plist);
+
     sched();
     release(&ptablelock);
 }
@@ -221,7 +255,7 @@ exit()
     
     acquire(&ptablelock);
 
-    p->parent->state = RUNNABLE;
+    // p->parent->state = RUNNABLE;
 
     struct proc *pc;
     for (pc = &ptable.proc; pc < &ptable.proc[NPROC]; pc++) {
@@ -231,6 +265,8 @@ exit()
     }
 
     p->state = ZOMBIE;
+    list_delete(&p->plist);
+
     sched();
 
 }
@@ -249,14 +285,18 @@ sleep(void *chan, struct spinlock *lk)
         if (lk) release(lk);
     }
 
+    // cprintf("SLEEP BEGIN\n");
+
     struct proc *p = thiscpu->proc;
     
     p->chan = chan;
     p->state = SLEEPING;
+    list_delete(&p->plist);
 
     uint64_t entry = (uint64_t)chan % HASHENTRIES;
     list_push_back(&hashmp[entry], &(p->clist));
 
+    // cprintf("SLEEP SCHED\n");
     sched();
 
     p->chan = 0; 
@@ -273,24 +313,7 @@ wakeup(void *chan)
 {
     /* TODO: Your code here. */
     acquire(&ptablelock);
-    /*
-    int change = 0;
-    struct proc *p;
-    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-        if (p->chan == chan && p->state == SLEEPING) {
-            p->state = RUNNABLE;
-            change = 1;
-        }else{
-            if (p->chan == chan)
-                cprintf("=======================================\n");
-        }
-    */
-    /*
-    struct proc *p = ptable.proc;
-    if (p->chan == chan && p->state == SLEEPING) 
-        p->state = RUNNABLE;            
-    */
-    
+
     uint64_t entry = (uint64_t)chan % HASHENTRIES;
     struct list_head *ery = &hashmp[entry];
     for (struct list_head* l = ery->next; l != ery; l = l->next) {
@@ -298,10 +321,11 @@ wakeup(void *chan)
         if (p->chan == chan && p->state == SLEEPING) {
             p->state = RUNNABLE;
             list_delete(l);
+            list_push_back(&prioque[p->prio], &p->plist);
+
+            if (p->plist.next == NULL)
+                cprintf("WAKEUP NULL\n");
             break;
-        }else{
-            // if (p->chan == chan)
-            //     cprintf("=======================================\n");
         }
     }
     
@@ -314,4 +338,19 @@ currentel()
     uint64_t t;
     asm volatile ("mrs %[cnt], CurrentEL" : [cnt]"=r"(t));
     return t;
+}
+
+void
+proc_disp()
+{
+    acquire(&ptablelock);
+    cprintf("display begin:\n");
+    for (struct list_head *l = prioque; l < prioque + PRIOENTRIES; l++) {
+        for (struct list_head *pl = l->next; pl != l; pl = pl->next) {
+            struct proc *p = container_of(pl, struct proc, plist);
+            cprintf("%d %s %d %d\n", p->pid, p->name, p->state, p->prio);
+        }
+    }
+    cprintf("display end.\n");
+    release(&ptablelock);
 }

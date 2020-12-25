@@ -143,6 +143,7 @@ syscall()
     {
         case SYS_exec:
             sd_test();
+            // proc_disp();
             return sys_exec();
             break;
         case SYS_exit:
