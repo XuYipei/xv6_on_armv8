@@ -72,13 +72,13 @@ struct proc {
     void *chan;              /* If non-zero, sleeping on chan           */
     int killed;              /* If non-zero, have been killed           */
     char name[16];           /* Process name (debugging)                */
-<<<<<<< HEAD
 
     struct file *ofile[NOFILE];  /* Open files */
     struct inode *cwd;           /* Current directory */
-=======
+
     struct list_head clist; 
->>>>>>> 02014c9... sd
+    struct list_head plist;
+    int prio, intr;
 };
 
 static inline struct proc *
@@ -96,13 +96,9 @@ void exit();
 int fork();
 int wait();
 
-<<<<<<< HEAD
-#endif
-=======
 void wakeup(void *);
 void sleep(void *, struct spinlock *);
 
 uint64_t currentel();
 
-#endif
->>>>>>> 02014c9... sd
+void proc_disp();
