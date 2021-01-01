@@ -568,7 +568,7 @@ sd_start(struct buf *b)
     int bno = sdCard.type == SD_TYPE_2_HC ? b->blockno : b->blockno << 9;
     int write = b->flags & B_DIRTY;
 
-    // cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, bno, write);
+    cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, bno, write);
 
     disb();
     // Ensure that any data operation has completed before doing the transfer.
@@ -713,7 +713,7 @@ sd_test()
     for (int i = 1; i < n; i ++) {
         // Backup.
         b[0].flags = 0;
-        b[0].blockno = i;
+        b[0].blockno = i + n * offset;
         sdrw(&b[0]);
 
         // Write some value.
