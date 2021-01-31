@@ -219,7 +219,7 @@ yield()
     p->intr += 1;
     if (p->intr == (1 << 5) && p->prio == 3)
         p->prio = 2, p->intr = 0;
-    if (p->intr == (1 << 10) && p->prio == 2)
+    if (p->intr == (1 << 20) && p->prio == 2)
         p->prio = 3, p->intr = 0;
     // if (p->intr == (1 << 20) && p->prio == 1)
     //    p->prio = 3, p->intr = 0;
