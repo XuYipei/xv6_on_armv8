@@ -137,26 +137,6 @@ syscall()
      * }
      */
     /* TODO: Your code here. */
-<<<<<<< HEAD
-
-=======
-    
-    int code = proc->tf->r0;
-    switch (code)
-    {
-        case SYS_exec:
-            sd_test();
-            // proc_disp();
-            return sys_exec();
-            break;
-        case SYS_exit:
-            return sys_exit();
-            break;
-        default:
-            break;
-    }
-    
->>>>>>> 5138260... Lab5
     return 0;
 }
 

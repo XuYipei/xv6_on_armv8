@@ -157,10 +157,6 @@ uvm_init(uint64_t *pgdir, char *binary, int sz)
     char *r = kalloc();
     memset(r, 0, PGSIZE);
     map_region(pgdir, 0, PGSIZE, V2P(r), PTE_RW);
-<<<<<<< HEAD
-
-=======
->>>>>>> c156d26... lab5
     memmove(r, binary, sz);
 }
 

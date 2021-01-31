@@ -1,20 +1,16 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 ARCH := aarch64
 =======
 <<<<<<< HEAD
 >>>>>>> 915889d... lab6_upd
+=======
+>>>>>>> 9c74af0... init
 CROSS := aarch64-linux-gnu-
 CC := $(CROSS)gcc
 LD := $(CROSS)ld
 OBJDUMP := $(CROSS)objdump
 OBJCOPY := $(CROSS)objcopy
-=======
-CROSS := aarch64-linux-gnu
-CC := $(CROSS)-gcc
-LD := $(CROSS)-ld
-OBJDUMP := $(CROSS)-objdump
-OBJCOPY := $(CROSS)-objcopy
->>>>>>> 1b1a74f... blabla
 
 
 COPY := cp -f

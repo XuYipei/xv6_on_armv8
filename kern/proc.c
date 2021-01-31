@@ -409,8 +409,4 @@ proc_disp()
     }
     cprintf("display end.\n");
     release(&ptablelock);
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 3fce677... lab6_upd
