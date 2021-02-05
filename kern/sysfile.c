@@ -51,24 +51,66 @@ static int
 fdalloc(struct file *f)
 {
     /* TODO: Your code here. */
+
+    int fd;
+    struct proc *p;
+    p = thisproc();
+
+    for (fd = 0; fd < NOFILE; fd++){
+        if (p->ofile[fd] == f)
+            return(fd);
+        if (!p->ofile[fd]){
+            p->ofile[fd] = f;
+            return(fd);
+        }
+    }
+    return(-1);
 }
 
 int
 sys_dup()
 {
     /* TODO: Your code here. */
+
+    struct file *f;
+    int64_t fd;
+    int result;
+    if (argfd(0, &fd, &f) < 0)
+        return(-1);
+    result = filedup(f);
+    return(result);
 }
 
 ssize_t
 sys_read()
 {
     /* TODO: Your code here. */
+
+    struct file *f;
+    int64_t fd;
+    struct iovec *iov;
+    ssize_t wtn;
+    if (argfd(0, &fd, &f) < 0 || argptr(1, &iov, sizeof(struct iovec)) < 0)
+        return -1;
+
+    wtn = fileread(f, iov->iov_base, iov->iov_len);
+    return(wtn);
 }
 
 ssize_t
 sys_write()
 {
     /* TODO: Your code here. */
+
+    struct file *f;
+    int64_t fd;
+    struct iovec *iov;
+    ssize_t wtn;
+    if (argfd(0, &fd, &f) < 0 || argptr(1, &iov, sizeof(struct iovec)) < 0)
+        return -1;
+
+    wtn = filewrite(f, iov->iov_base, iov->iov_len);
+    return(wtn);
 }
 
 
@@ -99,18 +141,47 @@ sys_writev()
      * return tot;
      * ```
      */
+
+    struct file *f;
+    int64_t fd, iovcnt;
+    struct iovec *iov, *p;
+    if (argfd(0, &fd, &f) < 0 || argint(2, &iovcnt) < 0) 
+        return(-1);
+    if (argptr(1, &iov, iovcnt * sizeof(struct iovec)) < 0)
+        return(-1);
+
+    size_t tot = 0;
+    for (p = iov; p < iov + iovcnt; p++){
+        tot += filewrite(f, p->iov_base, p->iov_len);
+    }
+    return tot;
 }
 
 int
 sys_close()
 {
     /* TODO: Your code here. */
+
+    struct file *f;
+    int64_t fd;
+    if (argfd(0, &fd, &f) < 0)
+        return(-1);
+    fileclose(f);
 }
 
 int
 sys_fstat()
 {
     /* TODO: Your code here. */
+
+    struct file *f;
+    int64_t fd;
+    int result;
+    struct stat *st;
+    if (argfd(0, &fd, &f) < 0 || argptr(1, &st, sizeof(struct stat)))
+        return(-1);
+    result = fstat(fd, st);
+    return(result);
 }
 
 int
@@ -153,6 +224,46 @@ static struct inode *
 create(char *path, short type, short major, short minor)
 {
     /* TODO: Your code here. */
+
+    size_t poff;
+    struct file *f;
+    struct inode *ind, *dp, *find;
+    char name[DIRSIZ];
+
+    dp = nameiparent(path, name);
+    if (!dp) return(0);
+
+    ilock(dp);
+
+    find = dirlookup(dp, name, &poff);
+    if (find){
+        iunlock(dp);
+        ilock(find);
+        if (type == T_FILE)
+            return(find);
+        iunlock(find); 
+        return(0);
+    }
+
+    ind = ialloc(dp->dev, type);
+    ilock(ind);
+    
+    ind->major = major;
+    ind->minor = minor;
+    ind->type = type;
+    ind->nlink = 1;
+    iupdate(ind);
+
+    if (type == T_DIR){
+        dp->nlink++;
+        iupdate(dp);
+        dirlink(ind, ".", ind->inum);
+        dirlink(ind, "..", dp->inum);
+    }
+    dirlink(dp, name, ind->inum);
+
+    iunlock(ind);
+    return(ind);
 }
 
 int

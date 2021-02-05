@@ -38,6 +38,10 @@ void
 readsb(int dev, struct superblock *sb)
 {
     /* TODO: Your code here. */
+
+    struct buf *bf = bread(dev, 0);
+    memcpy(sb, bf->data, sizeof(struct superblock));
+    brelse(bf);
 }
 
 /* Zero a block. */
@@ -45,6 +49,11 @@ static void
 bzero(int dev, int bno)
 {
     /* TODO: Your code here. */
+
+    struct buf *bf = bread(dev, bno);
+    memset(bf->data, 0, sizeof(bf->data));
+    log_write(bf);
+    brelse(bf);
 }
 
 /* Blocks. */
@@ -54,6 +63,23 @@ static uint32_t
 balloc(uint32_t dev)
 {
     /* TODO: Your code here. */
+
+    int i, j, k;
+    struct buf *bf;
+    for (i = 0; i < sb.size; i += BPB){
+        bf = bread(dev, BBLOCK(i, sb));
+        for (j = 0; j < BPB; j++){
+            k = 1 << (j % 8);
+            if (!(bf->data[j / 8] & k)){
+                bf->data[j / 8] |= k;
+                log_write(bf);
+                brelse(bf);
+                bzero(dev, i + j);
+                return(i + j);
+            }
+        }
+        brelse(bf);
+    }
 }
 
 /* Free a disk block. */
@@ -61,6 +87,20 @@ static void
 bfree(int dev, uint32_t b)
 {
     /* TODO: Your code here. */
+
+    int i, j, k;
+    struct buf *bf;
+    i = b / BPB;
+    j = b % BPB / 8;
+    k = 1 << (b % BPB % 8);
+
+    bf = bread(dev, BBLOCK(i, sb));
+    if (bf->data[j] & k)
+        panic("Free block has been freed");
+    bf->data[j] ^= k;
+    log_write(bf);
+    brelse(bf);
+    // bzero(dev, b);
 }
 
 /* Inodes.
@@ -155,6 +195,22 @@ struct inode*
 ialloc(uint32_t dev, short type)
 {
     /* TODO: Your code here. */
+    int i, j, k;
+    struct buf *bf;
+    struct dinode *ind;
+    for (i = 0; i < sb.ninodes; i+=IPB){
+        bf = bread(dev, IBLOCK(i, sb));
+        for (j = 0; j < IPB; j++){
+            ind = ((struct dinode *)(bf->data)) + j;
+            if (ind->type) continue;
+            ind->type = type;
+            log_write(bf);
+            brelse(bf);
+            return(iget(dev, i));
+        }
+        brelse(bf);
+    }
+    panic("Ialloc cannot alloc inode");
 }
 
 /* Copy a modified in-memory inode to disk.
@@ -167,6 +223,18 @@ void
 iupdate(struct inode *ip)
 {
     /* TODO: Your code here. */
+    struct buf *bf;
+    struct dinode *didata;
+    bf = bread(ip->dev, IBLOCK(ip->inum, sb));
+    didata = ((struct dinode *)(bf->data)) + ip->inum % IPB;
+    didata->type = ip->type;
+    didata->major = ip->major;
+    didata->minor = ip->minor;
+    didata->nlink = ip->nlink;
+    didata->size = ip->size;
+    memcpy(didata->addrs, ip->addrs, sizeof(didata->addrs));
+    log_write(bf);
+    brelse(bf);
 }
 
 /*
@@ -178,6 +246,31 @@ static struct inode*
 iget(uint32_t dev, uint32_t inum)
 {
     /* TODO: Your code here. */
+
+    int i, j, k;
+    struct inode *ind = 0, *emp = 0;
+    acquire(&icache.lock);
+    for (ind = 0; ind < icache.inode + NINODE; ind++){
+        if (ind->inum == inum && ind->ref > 0 && ind->dev == dev){
+            ind->ref++;
+            release(&icache.lock);
+            return ind;
+        }else{
+            if (ind->ref == 0 && emp == 0)
+                emp = ind;
+        }
+    }
+
+    if (emp == 0)
+        panic("Cannot alloc a inode");
+
+    emp->dev = dev;
+    emp->inum = inum;
+    emp->ref = 1;
+    emp->size = 0;
+    emp->valid = 0;
+    release(&icache.lock);
+    return(emp);
 }
 
 /* 
@@ -188,6 +281,11 @@ struct inode*
 idup(struct inode *ip)
 {
     /* TODO: Your code here. */
+
+    acquire(&icache.lock);
+    ip->ref += 1;
+    release(&icache.lock);
+    return(ip);
 }
 
 /* 
@@ -198,6 +296,22 @@ void
 ilock(struct inode *ip)
 {
     /* TODO: Your code here. */
+
+    struct buf *bf;
+    struct dinode *didata;
+    acquiresleep(&ip->lock);
+    
+    if (!ip->valid){
+        bf = bread(ip->dev, IBLOCK(ip->inum, sb));
+        didata = ((struct dinode *)(bf->data)) + ip->inum % IPB;
+        ip->type = didata->type;
+        ip->major = didata->major;
+        ip->minor = didata->minor;
+        ip->nlink = didata->nlink;
+        ip->size = didata->size;
+        memcpy(ip->addrs, didata->addrs, sizeof(ip->addrs));
+        ip->valid = 1;
+    }
 }
 
 /* Unlock the given inode. */
@@ -205,6 +319,8 @@ void
 iunlock(struct inode *ip)
 {
     /* TODO: Your code here. */
+
+    releasesleep(&ip->lock);
 }
 
 /* Drop a reference to an in-memory inode.
@@ -220,6 +336,25 @@ void
 iput(struct inode *ip)
 {
     /* TODO: Your code here. */
+    
+    acquire(&icache.lock);
+    if (ip->ref == 1 && ip->valid && ip->nlink == 0){
+        acquiresleep(&ip->lock);
+        release(&icache.lock);
+
+        itrunc(ip);
+        ip->type = 0;
+        iupdate(ip);
+        ip->valid = 0;
+
+        releasesleep(&ip->lock);
+        acquire(&icache.lock);
+    }
+    ip->ref -= 1;
+    release(&icache.lock);
+    /* 
+     * ref 先不置为 0, 等所有操作结束后再置 0, 防止该 inode 在 ref = 0 后被另外进程的 iget 修改
+     */
 }
 
 /* Common idiom: unlock, then put. */
@@ -227,6 +362,8 @@ void
 iunlockput(struct inode *ip)
 {
     /* TODO: Your code here. */
+    iunlock(ip);
+    iput(ip);
 }
 
 /* Inode content
@@ -243,6 +380,26 @@ static uint32_t
 bmap(struct inode *ip, uint32_t bn)
 {
     /* TODO: Your code here. */
+
+    uint32_t *addrs;
+    struct buf *bf;
+    if (bn < NDIRECT){
+        if (ip->addrs[bn] == 0)
+            ip->addrs[bn] = balloc(ip->dev);
+        return(ip->addrs[bn]);
+    }
+    bn -= NDIRECT;
+    if (bn < NINDIRECT){
+        if (ip->addrs[NDIRECT] == 0)
+            ip->addrs[NDIRECT] = balloc(ip->dev);
+        bf = bread(ip->dev, ip->addrs[NDIRECT]);
+        addrs = (uint32_t *)bf->data;
+        if (addrs[bn] == 0)
+            addrs[bn] = balloc(ip->dev);
+        brelse(bf);
+        return(addrs[bn]);
+    }
+    panic("Cannot bmap such block");
 }
 
 /* Truncate inode (discard contents).
@@ -256,6 +413,27 @@ static void
 itrunc(struct inode *ip)
 {
     /* TODO: Your code here. */
+
+    uint32_t i, *addrs;
+    struct buf *bf;
+    for (i = 0; i < NDIRECT; i++){
+        if (!ip->addrs[i]) continue;
+        bfree(ip->dev, ip->addrs[i]);
+    }
+
+    if (ip->addrs[NDIRECT]){
+        bf = bread(ip->dev, ip->addrs[NDIRECT]);
+        addrs = (uint32_t *)bf->data;
+        for (i = 0; i < NINDIRECT; i++){
+            if (!addrs[i]) continue;
+            bfree(ip->dev, addrs[i]);
+        }
+        brelse(bf);
+        bfree(ip->dev, ip->addrs[NDIRECT]);
+    }
+
+    ip->size = 0;
+    iupdate(ip);
 }
 
 /*
@@ -362,7 +540,7 @@ namecmp(const char *s, const char *t)
 
 /*
  * Look for a directory entry in a directory.
- * If found, set *poff to byte offset of entry.
+ * If found, set *poff to byte offset of entr,m ,blmky.
  */
 struct inode*
 dirlookup(struct inode *dp, char *name, size_t *poff)

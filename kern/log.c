@@ -57,6 +57,8 @@ void
 initlog(int dev)
 {
     /* TODO: Your code here. */
+    
+
 }
 
 /* Copy committed blocks from log to their home location. */
@@ -64,6 +66,19 @@ static void
 install_trans()
 {
     /* TODO: Your code here. */
+    struct buf *buf = bread(log.dev, log.start);
+    struct logheader *hb = (struct logheader *) (buf->data);
+    
+    int i;
+    for (i = 0; i < hb->n; i++) {
+        struct buf *x = bread(log.dev, log.start + 1 + i);
+        struct buf *y = bread(log.dev, hb->block[i]);
+        memcpy(y->data, x->data, BSIZE);
+        bwrite(y);
+        unbpin(y);
+        brelse(y);
+        brelse(x);
+    }
 }
 
 /* Read the log header from disk into the in-memory log header. */
@@ -71,6 +86,15 @@ static void
 read_head()
 {
     /* TODO: Your code here. */
+
+    struct buf *buf = bread(log.dev, log.start);
+    struct logheader *hb = (struct logheader *) (buf->data);
+    int i;
+    log.lh.n = hb->n;
+    for (i = 0; i < log.lh.n; i++) {
+        log.lh.block[i] = hb->block[i];
+    }
+    brelse(buf);
 }
 
 /*
@@ -96,6 +120,11 @@ static void
 recover_from_log()
 {
     /* TODO: Your code here. */
+    initlog(0);
+    read_head();
+    install_trans();
+    log.lh.n = 0;
+    write_head();
 }
 
 /* Called at the start of each FS system call. */
@@ -103,6 +132,22 @@ void
 begin_op()
 {
     /* TODO: Your code here. */
+
+    while (1){
+        acquire(&log.lock);
+        if (log.committing){
+            sleep(&log, &log.lock);
+        }else{
+            if ((log.outstanding + 1) * MAXOPBLOCKS <= LOGSIZE){
+                sleep(&log, &log.lock);
+            }else{
+                log.outstanding += 1;
+                release(&log.lock);
+                break;
+            }  
+        }
+        release(&log.lock);
+    }
 }
 
 /*
@@ -113,6 +158,22 @@ void
 end_op()
 {
     /* TODO: Your code here. */
+
+    int cmt = 0;
+    acquire(&log.lock);
+    log.outstanding -= 1;
+    if (log.outstanding == 0){
+        log.committing = 1;
+        cmt = 1;
+    }
+    release(&log.lock);
+
+    if (cmt){
+        commit();
+        acquire(&log.lock);
+        log.committing = 0;
+        release(&log.lock);
+    }
 }
 
 /* Copy modified blocks from cache to log. */
@@ -120,12 +181,27 @@ static void
 write_log()
 {
     /* TODO: Your code here. */
+
+    int i = 0;
+    for (i = 0; i < log.lh.n; i++){
+        struct buf *x = bread(log.dev, log.lh.block[i]);
+        struct buf *y = bread(log.dev, log.start + i + 1);
+        memcpy(y->data, x->data, BSIZE);
+        bwrite(y);
+        brelse(x);
+        brelse(y);
+    }
 }
 
 static void
 commit()
 {
     /* TODO: Your code here. */
+    write_log();
+    write_head();
+    install_trans();
+    log.lh.n = 0;
+    write_head();
 }
 
 /* Caller has modified b->data and is done with the buffer.
@@ -142,5 +218,23 @@ void
 log_write(struct buf *b)
 {
     /* TODO: Your code here. */
+    
+    acquire(&log.lock);
+
+    int p = -1, i = 0;
+    for (i = 0; i < log.lh.n; i++){
+        if (log.lh.block[i] == b->blockno){
+            p = i; 
+            break;
+        }
+    }
+        
+    if (p != -1){
+        p = log.lh.n++;
+        log.lh.block[p] = b->blockno;
+    }
+
+    bpin(b);
+    release(&log.lock);
 }
 

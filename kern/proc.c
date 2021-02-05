@@ -321,10 +321,7 @@ wakeup(void *chan)
             p->state = RUNNABLE;
             list_delete(l);
             list_push_back(&prioque[p->prio], &p->plist);
-
-            if (p->plist.next == NULL)
-                cprintf("WAKEUP NULL\n");
-            break;
+            // break;
         }
     }
     
