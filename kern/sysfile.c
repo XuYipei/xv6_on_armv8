@@ -180,7 +180,7 @@ sys_fstat()
     struct stat *st;
     if (argfd(0, &fd, &f) < 0 || argptr(1, &st, sizeof(struct stat)))
         return(-1);
-    result = fstat(fd, st);
+    result = filestat(fd, st);
     return(result);
 }
 

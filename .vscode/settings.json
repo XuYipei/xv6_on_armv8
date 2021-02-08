@@ -11,6 +11,7 @@
         "xlocnum": "c",
         "xmemory": "c",
         "xstring": "c",
-        "xutility": "c"
+        "xutility": "c",
+        "file.h": "c"
     }
 }

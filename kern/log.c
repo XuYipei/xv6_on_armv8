@@ -75,7 +75,7 @@ install_trans()
         struct buf *y = bread(log.dev, hb->block[i]);
         memcpy(y->data, x->data, BSIZE);
         bwrite(y);
-        unbpin(y);
+        bunpin(y);
         brelse(y);
         brelse(x);
     }

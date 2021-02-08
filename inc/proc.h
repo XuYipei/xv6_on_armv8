@@ -99,6 +99,8 @@ int wait();
 void wakeup(void *);
 void sleep(void *, struct spinlock *);
 
+// debug
 uint64_t currentel();
-
 void proc_disp();
+
+#endif

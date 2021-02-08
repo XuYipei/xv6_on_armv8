@@ -1,11 +1,4 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 ARCH := aarch64
-=======
-<<<<<<< HEAD
->>>>>>> 915889d... lab6_upd
-=======
->>>>>>> 9c74af0... init
 CROSS := aarch64-linux-gnu-
 CC := $(CROSS)gcc
 LD := $(CROSS)ld

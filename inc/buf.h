@@ -30,4 +30,7 @@ void        bwrite(struct buf *b);
 void        brelse(struct buf *b);
 struct buf *bread(uint32_t dev, uint32_t blockno);
 
+void        bpin(struct buf *b);
+void        bunpin(struct buf *b);
+
 #endif

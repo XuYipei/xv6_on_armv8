@@ -8,6 +8,9 @@
 #include "mmu.h"
 #include "list.h"
 
+#include "file.h"
+#include "log.h"
+
 #define HASHENTRIES 17
 #define PRIOENTRIES 4
 
@@ -44,6 +47,12 @@ proc_init()
     }
     initlock(&ptablelock, "ptable");
 }
+void cleanproc(struct proc *p){
+    p->state = UNUSED;
+    p->pid = 0;
+    p->parent = NULL;
+    p->killed = 0;
+}
 
 /*
  * Look through the process table for an UNUSED proc.
@@ -55,6 +64,7 @@ static struct proc *
 proc_alloc()
 {
     struct proc *p;
+    int i;
     /* TODO: Your code here. */
 
     acquire(&ptablelock);
@@ -95,6 +105,12 @@ proc_alloc()
     p->context = (struct context *)sp;
     memset(p->context, 0, sizeof(struct context));
     p->context->r30 = (uint64_t)forkret + 8;
+
+    p->clist.next = p->clist.prev = 0;
+    p->plist.next = p->plist.prev = 0;
+    memset(p->ofile, 0, sizeof(p->ofile));
+    p->cwd = 0;
+    
 
     release(&ptablelock);
 
@@ -165,22 +181,15 @@ scheduler()
 
         for (struct list_head* l = &prioque[PRIOENTRIES - 1]; l >= prioque; l--) 
             if (!list_empty(l)) {
-                // cprintf("FIND PROC\n");
-
                 struct list_head *pl = list_front(l);
                 p = container_of(pl, struct proc, plist);
 
                 c->proc = p;
                 uvm_switch(p);
-
                 p->state = RUNNING;
                 list_delete(&p->plist);
-
-                // cprintf("SWTCH ENTER\n");
-
+                
                 swtch(&c->scheduler, p->context);
-
-                // cprintf("SWTCH RETURN\n");
                 break;
             }
 
@@ -208,29 +217,6 @@ sched()
     
 }
 
-void
-yield()
-{
-    acquire(&ptablelock);
-    
-    struct proc* p = thiscpu->proc;
-    p->state = RUNNABLE;
-    
-    p->intr += 1;
-    if (p->intr == (1 << 5) && p->prio == 3)
-        p->prio = 2, p->intr = 0;
-    if (p->intr == (1 << 20) && p->prio == 2)
-        p->prio = 3, p->intr = 0;
-    // if (p->intr == (1 << 20) && p->prio == 1)
-    //    p->prio = 3, p->intr = 0;
-
-    // list_delete(&p->plist);
-    list_push_back(&prioque[p->prio], &p->plist);
-
-    sched();
-    release(&ptablelock);
-}
-
 /*
  * A fork child will first swtch here, and then "return" to user space.
  */
@@ -252,10 +238,20 @@ exit()
 {
     struct proc *p = thiscpu->proc;
     /* TODO: Your code here. */
+
+    struct file *of;
+    for (of = p->ofile; of < p->ofile + NOFILE; of++)
+        if (of){
+            fileclose(of);
+            of = 0;
+        }
+    if (p->cwd){
+        begin_op();
+        iput(p->cwd);
+        end_op();
+    }
     
     acquire(&ptablelock);
-
-    // p->parent->state = RUNNABLE;
 
     struct proc *pc;
     for (pc = &ptable.proc; pc < &ptable.proc[NPROC]; pc++) {
@@ -273,7 +269,7 @@ exit()
 /*
  * Atomically release lock and sleep on chan.
  * Reacquires lock when awakened.
- */
+ */ 
 void
 sleep(void *chan, struct spinlock *lk)
 {
@@ -338,14 +334,6 @@ yield()
     struct proc* p = thiscpu->proc;
     p->state = RUNNABLE;
     
-    p->intr += 1;
-    if (p->intr == (1 << 5) && p->prio == 3)
-        p->prio = 2, p->intr = 0;
-    if (p->intr == (1 << 20) && p->prio == 2)
-        p->prio = 3, p->intr = 0;
-    // if (p->intr == (1 << 20) && p->prio == 1)
-    //    p->prio = 3, p->intr = 0;
-
     // list_delete(&p->plist);
     list_push_back(&prioque[p->prio], &p->plist);
 
@@ -362,6 +350,42 @@ int
 fork()
 {
     /* TODO: Your code here. */
+
+    int cpid, i;
+    struct proc *par, *child;
+    par = thiscpu->proc;
+
+    if ((child = proc_alloc()) == 0){
+        return(-1);
+    }
+    
+    acquire(&ptablelock);
+
+    child->sz = par->sz;
+    child->parent = par;
+    strcpy(par->name, child->name);
+
+    for (i = 0; i < NOFILE; i++){
+        child->ofile[i] = par->ofile[i];
+        if (child->ofile[i])
+            filedup(child->ofile[i]);
+    }
+    child->cwd = idup(par->cwd);
+    
+    memcpy(child->tf, par->tf, sizeof(struct trapframe));
+    child->tf->r0 = 0;
+    // to child, fork() return 0
+
+    cpid = child->pid;
+    child->state = RUNNABLE;
+
+    child->prio = par->prio;
+    list_push_back(&prioque[child->prio], &child->plist);
+
+    release(&ptablelock);
+    
+    return (cpid);
+    // to parent, fork() return pid of child
 }
 
 /*
@@ -372,6 +396,31 @@ int
 wait()
 {
     /* TODO: Your code here. */
+    acquire(&ptablelock);
+
+    int pid;
+    struct proc *p, *par;
+    par = thiscpu->proc;
+    
+    for (;;){
+        uint8_t flag = 0;
+        for (p = ptable.proc; p < ptable.proc + NPROC; p++){
+            if (p->parent == par){
+                flag = 1;
+                if (p->state == ZOMBIE){
+                    pid = p->pid;
+                    cleanproc(p);
+                    release(&ptablelock);
+                    return(pid);
+                }
+            }
+        }
+        if (!flag){
+            release(&ptablelock);
+            return(-1);
+        }
+        sleep(par, &ptablelock);
+    }
 }
 
 /*
