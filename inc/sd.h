@@ -19,6 +19,8 @@
 #define SD_READ_BLOCKS       0
 #define SD_WRITE_BLOCKS      1
 
+uint32_t LBA, LBAsize;
+
 void sd_init();
 void sd_intr();
 void sdrw(struct buf *);

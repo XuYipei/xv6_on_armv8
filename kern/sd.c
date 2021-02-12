@@ -542,11 +542,11 @@ sd_init()
 
     char *d = job.data;
     d += 0x1CE;
-    uint32_t LBA = *(uint32_t *)d; 
+    LBA = *(uint32_t *)d; 
     d += 4;
-    uint32_t size  = *(uint32_t *)d;
+    LBAsize  = *(uint32_t *)d;
 
-    cprintf(" - LBA = %x, SIZE = %x\n", LBA, size);
+    cprintf(" - LBA = %x, SIZE = %x\n", LBA, LBAsize);
     
     /* TODO: Your code here. */
 }
@@ -644,10 +644,6 @@ sd_intr()
             list_pop_front(&sdque);
             if (!list_empty(&sdque)){
                 struct buf * head = (struct buf *) container_of(list_front(&sdque), struct buf, blist);
-                if (head->blockno != 512){
-                    int deb=0;
-                    // cprintf("ERROR!!!!!\n");
-                }
                 sd_start(head);
             }
         }

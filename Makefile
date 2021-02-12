@@ -30,12 +30,13 @@ COPY := cp -f
 LIBS = $(LIBGCC)
 
 CORTEX_A53_FLAGS := -mno-outline-atomics -mcpu=cortex-a53 -mtune=cortex-a53
-CFLAGS := -Wall -g -O2 \
+CFLAGS := -Wall -g \
           -fno-pie -fno-pic -fno-stack-protector \
           -fno-zero-initialized-in-bss \
           -static -fno-builtin -nostdlib -nostdinc -ffreestanding -nostartfiles \
           -mgeneral-regs-only \
           -MMD -MP \
+		  -DTEST_FILE_SYSTEM \
           $(CORTEX_A53_FLAGS)
 
 CFLAGS += -Iinc -Ilibc/obj/include -Ilibc/arch/aarch64 -Ilibc/include

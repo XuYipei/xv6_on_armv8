@@ -28,5 +28,5 @@ void
 clock()
 {
     // cprintf("clock: cpu %d clock.\n", cpuid());
-    // yield();
+    yield();
 }

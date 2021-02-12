@@ -12,11 +12,14 @@
 #include "proc.h"
 #include "sd.h"
 
+#include "log.h"
+#include "file.h"
+
 struct cpu cpus[NCPU];
-uint32_t pgdrinitcnt = 0, pcinitcnt = 0, sdinitcnt = 0;
+uint32_t pgdrinitcnt = 0, pcinitcnt = 0, fsinitcnt = 0;
 struct spinlock pgdrinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
 struct spinlock pcinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
-struct spinlock sdinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
+struct spinlock fsinitlock = (struct spinlock){(struct spinlock *)NULL, 0};
 
 void
 main()
@@ -42,7 +45,6 @@ main()
     if (pgdrinitcnt == 0){
         memset(edata, 0, end - edata);    
         pgdrinitcnt = 1;
-        cprintf("init bss in CPU %d.\n", cpuid());
     }
     release(&pgdrinitlock);
     
@@ -50,32 +52,33 @@ main()
     console_init();
     alloc_init();
     check_free_list();
-
     irq_init();
+
     acquire(&pcinitlock);
     if (pcinitcnt == 0){
-        proc_init();
+        proc_init();   
+        user_init();
+        user_init();
         pcinitcnt = 1;
-        
-        user_init();
-        user_init();
-        user_init();
-        user_init();
-        // user_init();
-        // user_init();
-        // user_init();
     }   
     release(&pcinitlock);
 
     lvbar(vectors);
     timer_init();
 
-    acquire(&sdinitlock);
-    if (sdinitcnt == 0){
+    acquire(&fsinitlock);
+    if (fsinitcnt == 0){
         sd_init();
-        sdinitcnt = 1;
+        cprintf("sd init done.\n");
+        binit();
+        cprintf("buffer init done.\n");
+        iinit(0);
+        cprintf("icache init done.\n");
+        fileinit();
+        cprintf("ftable init done.\n");
+        fsinitcnt = 1;
     }
-    release(&sdinitlock);
+    release(&fsinitlock);
     // sd_test();        
 
     cprintf("main: [CPU%d] Init success.\n", cpuid());

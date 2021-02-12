@@ -149,7 +149,7 @@ user_init()
     p->clist.next = p->clist.prev = 0;
     p->plist.next = p->plist.prev = 0;
 
-    p->prio  = PRIOENTRIES - 1;
+    p->prio = PRIOENTRIES - 1;
     list_push_back(&prioque[p->prio], &p->plist);
 }
 
@@ -307,11 +307,13 @@ void
 wakeup(void *chan)
 {
     /* TODO: Your code here. */
+    struct list_head *ery, *l, *lnext;
     acquire(&ptablelock);
 
     uint64_t entry = (uint64_t)chan % HASHENTRIES;
-    struct list_head *ery = &hashmp[entry];
-    for (struct list_head* l = ery->next; l != ery; l = l->next) {
+    ery = &hashmp[entry];
+    for (struct list_head* l = ery->next; l != ery; l = lnext) {
+        lnext = l->next;
         struct proc *p = container_of(l, struct proc, clist);
         if (p->chan == chan && p->state == SLEEPING) {
             p->state = RUNNABLE;

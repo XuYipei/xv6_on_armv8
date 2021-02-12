@@ -51,3 +51,25 @@ sys_wait4()
 
     return wait();
 }
+
+int
+sys_exit()
+{
+    cprintf("sys_exit: in exit\n");
+    exit();
+    return 0;
+}
+
+int fsmnt = 0;
+
+int
+sys_test()
+{
+    cprintf("sys_test: begin\n");
+    if (!__atomic_test_and_set(&fsmnt, __ATOMIC_ACQUIRE)) {
+        initlog(0);
+        cprintf("log init done.\n");
+    }
+    cprintf("sys_test: end\n");
+    return(0);
+}

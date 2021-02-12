@@ -8,12 +8,12 @@
 start:
     ldr     x1, =init
     ldr     x2, =argv
-    mov     x0, #SYS_exec
+    mov     x0, #SYS_test
     svc     0x00
 
-while1:
-    mov     x5, 0
-    b       while1 
+loop:
+    mov     x1, 1
+    b       loop
 
 exit:
     mov     x0, #SYS_exit
@@ -31,4 +31,3 @@ argv:
     .word 0
     .word 0
     .word 0
-

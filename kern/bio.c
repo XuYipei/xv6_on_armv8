@@ -48,7 +48,7 @@ binit()
     
     struct buf *bf;
     for (bf = bcache.buf; bf < bcache.buf + NBUF; bf++){
-        list_push_back(&bcache.head.blist, &bf->blist);
+        list_push_front(&bcache.head.blist, &bf->blist);
         initsleeplock(&bf->lock, "bcache buf lock");
     }
 }
@@ -69,7 +69,7 @@ bget(uint32_t dev, uint32_t blockno)
     struct list_head *it;
 
     for (it = bcache.head.blist.next; it != &bcache.head.blist ; it = it->next){
-        bf = (struct buf *)container_of(&it, struct buf, blist);
+        bf = (struct buf *)container_of(it, struct buf, blist);
         if (bf->dev != dev || bf->blockno != blockno)
             continue;
         bf->refcnt++;
@@ -79,8 +79,8 @@ bget(uint32_t dev, uint32_t blockno)
     }
 
     for (it = bcache.head.blist.prev; it != &bcache.head.blist; it = it->prev){
-        bf = (struct buf *)container_of(&it, struct buf, blist);
-        if (bf->refcnt == 0)
+        bf = (struct buf *)container_of(it, struct buf, blist);
+        if (bf->refcnt != 0)
             continue;
         bf->flags = 0;
         bf->refcnt = 1;

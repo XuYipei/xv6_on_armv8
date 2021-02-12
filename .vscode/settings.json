@@ -12,6 +12,8 @@
         "xmemory": "c",
         "xstring": "c",
         "xutility": "c",
-        "file.h": "c"
+        "file.h": "c",
+        "type_traits": "c",
+        "types.h": "c"
     }
 }

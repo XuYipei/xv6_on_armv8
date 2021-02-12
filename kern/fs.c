@@ -182,6 +182,12 @@ void
 iinit(int dev)
 {
     /* TODO: Your code here. */
+
+    struct inode *i;
+
+    initlock(&icache.lock, "inode cache");
+    for (i = icache.inode; i < icache.inode + NINODE; i++) 
+        initsleeplock(&i->lock, "inode");
 }
 
 static struct inode* iget(uint32_t dev, uint32_t inum);

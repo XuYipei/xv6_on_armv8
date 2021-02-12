@@ -137,6 +137,37 @@ syscall()
      * }
      */
     /* TODO: Your code here. */
+
+    int code = proc->tf->r0;
+
+    switch (code){
+        case SYS_exec:
+            sys_exec();
+            break;
+        case SYS_exit:
+            sys_exit();
+            break;
+        case SYS_sched_yield:
+            sys_yield();
+            break;
+        case SYS_fstat:
+            sys_fstat();
+            break;
+        case SYS_writev:
+            sys_writev();
+            break;
+        case SYS_read:
+            sys_read();
+            break;
+        case SYS_close:
+            sys_close();
+            break;
+        case SYS_test:
+            sys_test();
+            break;
+        default:
+            break;
+    }
     return 0;
 }
 

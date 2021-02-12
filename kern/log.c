@@ -6,6 +6,8 @@
 #include "buf.h"
 #include "string.h"
 
+#include "sd.h"
+
 /* Simple logging that allows concurrent FS system calls.
  *
  * A log transaction contains the updates of multiple FS system
@@ -58,7 +60,19 @@ initlog(int dev)
 {
     /* TODO: Your code here. */
     
+    struct superblock sb;
+    struct buf *bf;
 
+    initlock(&log.lock, "log");
+    log.dev = dev;
+
+    bf = bread(dev, LBA);
+    memcpy(&sb, bf->data, sizeof(sb));
+    log.start = sb.logstart;
+    log.size = sb.nlog;
+    brelse(bf);
+
+    recover_from_log();
 }
 
 /* Copy committed blocks from log to their home location. */
@@ -66,19 +80,17 @@ static void
 install_trans()
 {
     /* TODO: Your code here. */
-    struct buf *buf = bread(log.dev, log.start);
-    struct logheader *hb = (struct logheader *) (buf->data);
-    
     int i;
-    for (i = 0; i < hb->n; i++) {
+    for (i = 0; i < log.lh.n; i++) {
         struct buf *x = bread(log.dev, log.start + 1 + i);
-        struct buf *y = bread(log.dev, hb->block[i]);
+        struct buf *y = bread(log.dev, log.lh.block[i]);
         memcpy(y->data, x->data, BSIZE);
         bwrite(y);
         bunpin(y);
         brelse(y);
         brelse(x);
     }
+
 }
 
 /* Read the log header from disk into the in-memory log header. */
@@ -120,7 +132,6 @@ static void
 recover_from_log()
 {
     /* TODO: Your code here. */
-    initlog(0);
     read_head();
     install_trans();
     log.lh.n = 0;
