@@ -69,13 +69,13 @@ main()
     acquire(&fsinitlock);
     if (fsinitcnt == 0){
         sd_init();
-        cprintf("sd init done.\n");
+        // cprintf("sd init done.\n");
         binit();
-        cprintf("buffer init done.\n");
+        // cprintf("buffer init done.\n");
         iinit(0);
-        cprintf("icache init done.\n");
+        // cprintf("icache init done.\n");
         fileinit();
-        cprintf("ftable init done.\n");
+        // cprintf("ftable init done.\n");
         fsinitcnt = 1;
     }
     release(&fsinitlock);

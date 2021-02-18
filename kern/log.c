@@ -66,10 +66,24 @@ initlog(int dev)
     initlock(&log.lock, "log");
     log.dev = dev;
 
-    bf = bread(dev, LBA);
+    bf = bread(dev, LBA + 1);
     memcpy(&sb, bf->data, sizeof(sb));
+    sb.logstart   += LBA;
+    sb.bmapstart  += LBA;
+    sb.inodestart += LBA;
+
     log.start = sb.logstart;
     log.size = sb.nlog;
+
+    cprintf("\n******************\n");
+    cprintf("* sb.size:       %x\n", sb.size);
+    cprintf("* sb.nblocks:    %x\n", sb.nblocks);
+    cprintf("* sb.logstart:   %x\n", sb.logstart);
+    cprintf("* sb.nlog:       %x\n", sb.nlog);
+    cprintf("* sb.inodestart: %x\n", sb.inodestart);
+    cprintf("* sb.bmapstart:  %x\n", sb.bmapstart);
+    cprintf("******************\n\n");
+    
     brelse(bf);
 
     recover_from_log();

@@ -65,11 +65,11 @@ int fsmnt = 0;
 int
 sys_test()
 {
-    cprintf("sys_test: begin\n");
+    // cprintf("sys_test: begin\n");
     if (!__atomic_test_and_set(&fsmnt, __ATOMIC_ACQUIRE)) {
         initlog(0);
-        cprintf("log init done.\n");
+        // cprintf("log init done.\n");
     }
-    cprintf("sys_test: end\n");
+    // cprintf("sys_test: end\n");
     return(0);
 }

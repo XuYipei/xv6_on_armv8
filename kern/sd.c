@@ -534,20 +534,35 @@ sd_init()
     // list_push_back(&sdque, &job.blist);
     sd_start(&job);
     sdWaitForInterrupt(INT_READ_RDY);
+    
+    /*
+    for (int p = 0, done = 0; done < 128; done++){
+        uint32_t rd = *EMMC_DATA;
+        job.data[p++] = rd >> 24;
+        rd = rd << 8 >> 8;
+        job.data[p++] = rd >> 16;
+        rd = rd << 16 >> 16;
+        job.data[p++] = rd >> 8;
+        rd = rd << 24 >> 24;
+        job.data[p++] = rd;
+    }
+    */
 
-    for (int done = 0; done < 128; )
-        job.data[done++] = *EMMC_DATA;
+    uint32_t *p = (uint32_t *)job.data;
+    for (int done = 0; done < 128; done++, p++)
+        *p = *EMMC_DATA;
 
     sdWaitForInterrupt(INT_DATA_DONE);
 
     char *d = job.data;
-    d += 0x1CE;
+    d += 0x1CE + 8;
     LBA = *(uint32_t *)d; 
     d += 4;
     LBAsize  = *(uint32_t *)d;
 
     cprintf(" - LBA = %x, SIZE = %x\n", LBA, LBAsize);
-    
+
+    // while(1);
     /* TODO: Your code here. */
 }
 
@@ -644,6 +659,10 @@ sd_intr()
             list_pop_front(&sdque);
             if (!list_empty(&sdque)){
                 struct buf * head = (struct buf *) container_of(list_front(&sdque), struct buf, blist);
+                if (head->blockno != 512){
+                    int deb=0;
+                    // cprintf("ERROR!!!!!\n");
+                }
                 sd_start(head);
             }
         }
