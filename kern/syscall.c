@@ -4,6 +4,10 @@
 #include "console.h"
 #include "sd.h"
 
+#include "types.h"
+#include "vm.h"
+#include "mmu.h"
+
 /* 
  * User code makes a system call with SVC, system call number in r0.
  * Arguments on the stack, from the user call to the C
@@ -11,6 +15,8 @@
  */
 
 /* Fetch the int at addr from the current process. */
+
+
 int
 fetchint(uint64_t addr, int64_t *ip)
 {
@@ -19,8 +25,30 @@ fetchint(uint64_t addr, int64_t *ip)
     if (addr >= proc->sz || addr + 8 > proc->sz) {
         return -1;
     }
-    *ip = *(int64_t*)(addr);
+    *ip = *(int64_t *)(addr);
     return 0;
+}
+
+int
+copyinstr(char *dst, uint64_t *src)
+{
+    char *s, *t;
+    uint32_t n;
+
+    s = (char *)src;
+    t = dst;
+    for (n = 0; ;){
+        if (*s == '\0'){
+            *t = '\0';
+            return (n);
+        }else{
+            *t = *s;
+        }
+        t++;
+        s++;
+        n++;
+    }
+    return(-1);
 }
 
 /* 
@@ -31,15 +59,16 @@ fetchint(uint64_t addr, int64_t *ip)
 int
 fetchstr(uint64_t addr, char **pp)
 {
+    struct proc *proc;
     char *s, *ep;
-    struct proc *proc = thiscpu->proc;
-
+    
+    proc = thiscpu->proc;
     if (addr >= proc->sz) {
         return -1;
     }
 
-    *pp = (char*)addr;
-    ep = (char*)proc->sz;
+    *pp = (char *)addr;
+    ep = (char *)proc->sz;
 
     for (s = *pp; s < ep; s++) {
         if (*s == 0) {
@@ -64,7 +93,7 @@ argint(int n, uint64_t *ip)
 
     struct proc *proc = thiscpu->proc;
 
-    // *ip = *(&proc->tf->r1 + n);
+    *ip = *(&proc->tf->r0 + n);
 
     return 0;
 }
@@ -103,11 +132,9 @@ int
 argstr(int n, char **pp)
 {
     uint64_t addr;
-
     if (argint(n, &addr) < 0) {
         return -1;
     }
-
     return fetchstr(addr, pp);
 }
 
@@ -124,51 +151,82 @@ int
 syscall()
 {
     struct proc *proc = thiscpu->proc;
-    /*
-     * Determine the cause and then jump to the corresponding handle
-     * the handler may look like
-     * switch (syscall number) {
-     *      SYS_XXX:
-     *          return sys_XXX();
-     *      SYS_YYY:
-     *          return sys_YYY();
-     *      default:
-     *          panic("syscall: unknown syscall %d\n", syscall number)
-     * }
-     */
-    /* TODO: Your code here. */
+    int sysno = proc->tf->r8;
 
-    int code = proc->tf->r0;
+    cprintf("syscall: %d\n", sysno);
 
-    switch (code){
-        case SYS_exec:
-            sys_exec();
-            break;
-        case SYS_exit:
-            sys_exit();
-            break;
+    switch (sysno) {
+        // FIXME: Use pid instead of tid since we don't have threads :)
+        case SYS_set_tid_address:
+        case SYS_gettid:
+            return thisproc()->pid;
+
+        // FIXME: Hack TIOCGWINSZ(get window size)
+        case SYS_ioctl:
+            if (proc->tf->r1 == 0x5413) return 0;
+            else panic("ioctl unimplemented. 1");
+
+        // FIXME: Always return 0 since we don't have signals  :)
+        case SYS_rt_sigprocmask:
+            return 0;
+
+        case SYS_brk:
+            return sys_brk();
+
+        case SYS_execve:
+            return sys_exec();
+
         case SYS_sched_yield:
-            sys_yield();
-            break;
+            return sys_yield();
+
+        case SYS_clone:
+            return sys_clone();
+
+        case SYS_wait4:
+            return sys_wait4();
+
+        // FIXME: exit_group should kill every thread in the current thread group.
+        case SYS_exit_group:
+        case SYS_exit:
+            return sys_exit();
+
+        case SYS_dup:
+            return sys_dup();
+
+        case SYS_chdir:
+            return sys_chdir();
+
         case SYS_fstat:
-            sys_fstat();
-            break;
+            return sys_fstat();
+
+        case SYS_newfstatat:
+            return sys_fstatat();
+        case SYS_mkdirat:
+            return sys_mkdirat();
+
+        case SYS_mknodat:
+            return sys_mknodat();
+            
+        case SYS_openat:
+            return sys_openat();
+
         case SYS_writev:
-            sys_writev();
-            break;
+            return sys_writev();
+
         case SYS_read:
-            sys_read();
-            break;
+            return sys_read();
+
         case SYS_close:
-            sys_close();
-            break;
+            return sys_close();
+
         case SYS_test:
-            sys_test();
-            break;
+            return sys_test();
+
         default:
-            break;
+            // debug_reg();
+            panic("Unexpected syscall #%d\n", sysno);
+            return 0;
     }
-    return 0;
 }
 
 /* TODO: If you want to use musl

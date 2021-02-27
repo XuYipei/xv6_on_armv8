@@ -183,8 +183,9 @@ iinit(int dev)
 {
     /* TODO: Your code here. */
 
-    struct inode *i;
+    initlog(ROOTDEV, &sb);
 
+    struct inode *i;
     initlock(&icache.lock, "inode cache");
     for (i = icache.inode; i < icache.inode + NINODE; i++) 
         initsleeplock(&i->lock, "inode");
@@ -256,7 +257,7 @@ iget(uint32_t dev, uint32_t inum)
     int i, j, k;
     struct inode *ind = 0, *emp = 0;
     acquire(&icache.lock);
-    for (ind = 0; ind < icache.inode + NINODE; ind++){
+    for (ind = icache.inode; ind < icache.inode + NINODE; ind++){
         if (ind->inum == inum && ind->ref > 0 && ind->dev == dev){
             ind->ref++;
             release(&icache.lock);
@@ -316,6 +317,7 @@ ilock(struct inode *ip)
         ip->nlink = didata->nlink;
         ip->size = didata->size;
         memcpy(ip->addrs, didata->addrs, sizeof(ip->addrs));
+        brelse(bf);
         ip->valid = 1;
     }
 }
@@ -562,6 +564,13 @@ dirlookup(struct inode *dp, char *name, size_t *poff)
             panic("dirlookup read");
         if (de.inum == 0)
             continue;
+
+        cprintf("%s %s\n", name, de.name);
+        if (*de.name == 's'){
+            int deb = 0;
+            deb += 1;
+        }
+
         if (namecmp(name, de.name) == 0) {
             // entry matches path element
             if (poff)
@@ -654,6 +663,7 @@ static struct inode *
 namex(char *path, int nameiparent, char *name)
 {
     struct inode *ip, *next;
+    struct proc *proc = thiscpu->proc;
 
     if (*path == '/')
         ip = iget(ROOTDEV, ROOTINO);
@@ -688,8 +698,13 @@ namex(char *path, int nameiparent, char *name)
 struct inode *
 namei(char *path)
 {
+    // cprintf("open path: %s\n", path);
+
     char name[DIRSIZ];
-    return namex(path, 0, name);
+    struct inode *res = namex(path, 0, name);
+
+    // cprintf("open successfully\n");
+    return res;
 }
 
 struct inode *

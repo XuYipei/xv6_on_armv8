@@ -78,11 +78,10 @@ trap(struct trapframe *tf)
         if (iss == 0) {
             /* Jump to syscall to handle the system call from user process */
             /* TODO: Your code here. */
+            // syscall();
             syscall();
-            break;
-        default:
-bad:
-            panic("trap: unexpected irq.\n");
+        } else {
+            cprintf("unexpected svc iss 0x%x\n", iss);
         }
         break;
 
@@ -90,6 +89,7 @@ bad:
         panic("trap: unexpected irq.\n");
     }
 }
+
 
 void
 irq_error(uint64_t type)

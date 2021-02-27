@@ -15,6 +15,12 @@
         "file.h": "c",
         "type_traits": "c",
         "types.h": "c",
-        "string": "cpp"
+        "string": "cpp",
+        "proc.h": "c",
+        "elf.h": "c",
+        "vm.h": "c",
+        "string.h": "c",
+        "console.h": "c",
+        "memory": "c"
     }
 }

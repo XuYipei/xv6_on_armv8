@@ -72,12 +72,14 @@ xint(uint x)
 int
 main(int argc, char *argv[])
 {
+    fprintf(stderr, "<------------------------ mkfs ---------------------->\n");
     int i, cc, fd;
     uint rootino, inum, off;
     struct dirent de;
     char buf[BSIZE];
     struct dinode din;
 
+    fprintf(stderr, "mkfs\n");
 
     static_assert(sizeof(int) == 4, "Integers must be 4 bytes!");
 

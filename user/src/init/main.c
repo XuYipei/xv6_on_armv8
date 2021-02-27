@@ -16,8 +16,8 @@ main()
         mknod("console", 1, 1);
         open("console", O_RDWR);
     }
-    dup(0);  // stdout
-    dup(0);  // stderr
+    printf("stdout %d\n", dup(0));  // stdout
+    printf("stderr %d\n", dup(0));  // stderr
 
     while (1) {
         printf("init: starting sh\n");

@@ -44,11 +44,12 @@ binit()
     /* TODO: Your code here. */
 
     initlock(&bcache.lock, "bcache lock");
-    list_init(&bcache.head.blist);
+    list_init(&bcache.head.clist);
     
     struct buf *bf;
     for (bf = bcache.buf; bf < bcache.buf + NBUF; bf++){
-        list_push_front(&bcache.head.blist, &bf->blist);
+        bf->part = LBA;
+        list_push_front(&bcache.head.clist, &bf->clist);
         initsleeplock(&bf->lock, "bcache buf lock");
     }
 }
@@ -68,8 +69,8 @@ bget(uint32_t dev, uint32_t blockno)
     struct buf *bf;
     struct list_head *it;
 
-    for (it = bcache.head.blist.next; it != &bcache.head.blist ; it = it->next){
-        bf = (struct buf *)container_of(it, struct buf, blist);
+    for (it = bcache.head.clist.next; it != &bcache.head.clist ; it = it->next){
+        bf = (struct buf *)container_of(it, struct buf, clist);
         if (bf->dev != dev || bf->blockno != blockno)
             continue;
         bf->refcnt++;
@@ -78,8 +79,8 @@ bget(uint32_t dev, uint32_t blockno)
         return(bf);
     }
 
-    for (it = bcache.head.blist.prev; it != &bcache.head.blist; it = it->prev){
-        bf = (struct buf *)container_of(it, struct buf, blist);
+    for (it = bcache.head.clist.prev; it != &bcache.head.clist; it = it->prev){
+        bf = (struct buf *)container_of(it, struct buf, clist);
         if (bf->refcnt != 0)
             continue;
         bf->flags = 0;
@@ -104,6 +105,9 @@ bread(uint32_t dev, uint32_t blockno)
         sdrw(bf);
         bf->flags |= B_VALID;
     }
+    if (blockno == 59){
+        int deb=0;
+    }
     return(bf);
 }
 
@@ -114,7 +118,7 @@ bwrite(struct buf *b)
     /* TODO: Your code here. */
     if (!holdingsleep(&b->lock))
         panic("Write buffer isn't locked");
-    b->flags |= B_DIRTY;
+    b->flags = B_DIRTY;
     sdrw(b);
 }
 
@@ -133,8 +137,8 @@ brelse(struct buf *b)
     acquire(&bcache.lock);
 
     b->refcnt--;
-    list_delete(&b->blist);
-    list_push_front(&bcache.head.blist, &b->blist);
+    list_delete(&b->clist);
+    list_push_front(&bcache.head.clist, &b->clist);
 
     release(&bcache.lock);
 }

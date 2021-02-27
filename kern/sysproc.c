@@ -4,6 +4,10 @@
 #include "trap.h"
 #include "console.h"
 
+#include "vm.h"
+#include "log.h"
+#include "file.h"
+
 int
 sys_yield()
 {
@@ -15,6 +19,26 @@ size_t
 sys_brk()
 {
     /* TODO: Your code here. */
+    struct proc *proc;
+    int64_t n, oldsz, cursz;
+    if (argint(0, &n) < 0)
+        return -1;
+
+    proc  = thiscpu->proc;
+    oldsz = proc->sz;
+
+    if (n >= 0){
+        if (cursz = uvm_alloc(proc->pgdir, oldsz, oldsz + n) == 0) 
+            return(-1);
+    }else{
+        if (cursz = uvm_alloc(proc->pgdir, oldsz, oldsz + n) == 0)
+            return(-1);
+    }
+
+    proc->sz = cursz;
+    lttbr0(proc->pgdir);
+
+    return oldsz;
 }
 
 int
@@ -64,12 +88,13 @@ int fsmnt = 0;
 
 int
 sys_test()
-{
-    // cprintf("sys_test: begin\n");
-    if (!__atomic_test_and_set(&fsmnt, __ATOMIC_ACQUIRE)) {
-        initlog(0);
-        // cprintf("log init done.\n");
-    }
-    // cprintf("sys_test: end\n");
+{  
+    binit();
+    iinit(1);
+    fileinit();
+
+    struct proc *proc = thiscpu->proc;
+    proc->cwd = namei("/");
+
     return(0);
 }

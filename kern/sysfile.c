@@ -17,6 +17,13 @@
 #include "fs.h"
 #include "file.h"
 
+#include "syscall.h"
+#include "vm.h"
+#include "kalloc.h"
+#include "exec.h"
+
+#define MAXPATH 128
+
 struct iovec {
     void  *iov_base;    /* Starting address. */
     size_t iov_len;     /* Number of bytes to transfer. */
@@ -42,6 +49,7 @@ argfd(int n, int64_t *pfd, struct file **pf)
         *pf = f;
     return 0;
 }
+
 
 /*
  * Allocate a file descriptor for the given file.
@@ -277,6 +285,8 @@ sys_openat()
     if (argint(0, &dirfd) < 0 || argstr(1, &path) < 0 || argint(2, &omode) < 0)
         return -1;
 
+    cprintf("openat: %s\n", path);
+
     if (dirfd != AT_FDCWD) {
         cprintf("sys_openat: dirfd unimplemented\n");
         return -1;
@@ -408,5 +418,34 @@ int
 sys_exec()
 {
     /* TODO: Your code here. */
+    uint32_t i, argc;
+    int ret;
+    char *path, *argv[MAXPATH];
+    uint64_t uargv, uarg;
+
+    if (argstr(0, &path) < 0 || argint(1, &uargv) < 0)
+        return -1;        
+    memset(argv, 0, sizeof(argv));
+    for (i = 0; ; i++){
+        uint64_t uptr = uargv + (sizeof(uint64_t)) * i;
+        if (fetchint(uptr, (uint64_t)&uarg) < 0)
+            return(-1);
+        if (uarg == 0){
+            argv[i] = 0;
+            argc = i - 1;
+            break;
+        }
+        if (fetchstr(uarg, &argv[i]) < 0){
+            return(-1);
+        }
+    }   
+
+    ret = execve(path, argv, 0);
+    
+    return(ret);
 }
+/*
+sys_exec(path, *argv[])
+
+*/
 

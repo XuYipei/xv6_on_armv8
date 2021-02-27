@@ -124,7 +124,7 @@ proc_alloc()
  * by uvm_init
  */
 void
-user_init()
+user_init(uint8_t loop)
 {
     struct proc *p;
     /* for why our symbols differ from xv6, please refer https://stackoverflow.com/questions/10486116/what-does-this-gcc-error-relocation-truncated-to-fit-mean */
@@ -139,7 +139,9 @@ user_init()
     }
     
     uvm_init(p->pgdir, _binary_obj_user_initcode_start, _binary_obj_user_initcode_size);
-    p->tf->sp  = PGSIZE;
+    p->tf->sp = PGSIZE;
+    if (!loop)
+        p->tf->pc = 0x8;
 
     p->sz = PGSIZE;
     memcpy(p->name, "initcode", sizeof(p->name));
@@ -179,19 +181,23 @@ scheduler()
         
         // cprintf("SCHEDULER TURN BEGIN\n");
 
-        for (struct list_head* l = &prioque[PRIOENTRIES - 1]; l >= prioque; l--) 
-            if (!list_empty(l)) {
-                struct list_head *pl = list_front(l);
-                p = container_of(pl, struct proc, plist);
+        // for (struct list_head* l = &prioque[PRIOENTRIES - 1]; l >= prioque; l--) 
+            // if (!list_empty(l)) {
+        for (p = ptable.proc; p < &ptable.proc + NPROC; p++){
+            if (p->state != RUNNABLE)
+                continue;
 
-                c->proc = p;
-                uvm_switch(p);
-                p->state = RUNNING;
-                list_delete(&p->plist);
-                
-                swtch(&c->scheduler, p->context);
-                break;
-            }
+            c->proc = p;
+            uvm_switch(p);
+            p->state = RUNNING;
+            // list_delete(&p->plist);
+            
+            swtch(&c->scheduler, p->context);
+            break;
+            
+            c->proc = 0;
+        }
+            // }
 
         // cprintf("SCHEDULER TURN END\n");
 
@@ -261,7 +267,7 @@ exit()
     }
 
     p->state = ZOMBIE;
-    list_delete(&p->plist);
+    // list_delete(&p->plist);
 
     sched();
 }
@@ -286,10 +292,10 @@ sleep(void *chan, struct spinlock *lk)
     
     p->chan = chan;
     p->state = SLEEPING;
-    list_delete(&p->plist);
+    // list_delete(&p->plist);
 
-    uint64_t entry = (uint64_t)chan % HASHENTRIES;
-    list_push_back(&hashmp[entry], &(p->clist));
+    // uint64_t entry = (uint64_t)chan % HASHENTRIES;
+    // list_push_back(&hashmp[entry], &(p->clist));
 
     // cprintf("SLEEP SCHED\n");
     sched();
@@ -310,6 +316,16 @@ wakeup(void *chan)
     struct list_head *ery, *l, *lnext;
     acquire(&ptablelock);
 
+    struct proc *p;
+    
+    for (p = ptable.proc; p < &ptable.proc + NPROC; p++) {
+        if (p->chan == chan && p->state == SLEEPING) {
+            p->state = RUNNABLE;
+            // list_push_back(&prioque[p->prio], &p->plist);
+        }
+    }
+
+    /*
     uint64_t entry = (uint64_t)chan % HASHENTRIES;
     ery = &hashmp[entry];
     for (struct list_head* l = ery->next; l != ery; l = lnext) {
@@ -322,6 +338,7 @@ wakeup(void *chan)
             // break;
         }
     }
+    */
     
     release(&ptablelock);
 }
@@ -358,14 +375,11 @@ fork()
     par = thiscpu->proc;
 
     if ((child = proc_alloc()) == 0){
-        return(-1);
+        panic("fork");
     }
-    
-    acquire(&ptablelock);
 
     child->sz = par->sz;
     child->parent = par;
-    strcpy(par->name, child->name);
 
     for (i = 0; i < NOFILE; i++){
         child->ofile[i] = par->ofile[i];
@@ -373,17 +387,22 @@ fork()
             filedup(child->ofile[i]);
     }
     child->cwd = idup(par->cwd);
+
+    if ((child->pgdir = uvm_copy(par->pgdir, par->sz)) == 0)
+        panic("fork");
+    child->sz = par->sz;
     
     memcpy(child->tf, par->tf, sizeof(struct trapframe));
     child->tf->r0 = 0;
     // to child, fork() return 0
 
+    memcpy(child->name, par->name, sizeof(child->name));
     cpid = child->pid;
-    child->state = RUNNABLE;
 
+    acquire(&ptablelock);
+    child->state = RUNNABLE;
     child->prio = par->prio;
     list_push_back(&prioque[child->prio], &child->plist);
-
     release(&ptablelock);
     
     return (cpid);

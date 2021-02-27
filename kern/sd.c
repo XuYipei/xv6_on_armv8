@@ -549,8 +549,10 @@ sd_init()
     */
 
     uint32_t *p = (uint32_t *)job.data;
-    for (int done = 0; done < 128; done++, p++)
+    for (int done = 0; done < 128; done++, p++){
         *p = *EMMC_DATA;
+        cprintf("%x ", *p);
+    }
 
     sdWaitForInterrupt(INT_DATA_DONE);
 
@@ -560,7 +562,7 @@ sd_init()
     d += 4;
     LBAsize  = *(uint32_t *)d;
 
-    cprintf(" - LBA = %x, SIZE = %x\n", LBA, LBAsize);
+    cprintf("- LBA = %x, SIZE = %x\n", LBA, LBAsize);
 
     // while(1);
     /* TODO: Your code here. */
@@ -580,7 +582,7 @@ sd_start(struct buf *b)
     // Address is different depending on the card type.
     // HC pass address as block #.
     // SC pass address straight through.
-    int bno = sdCard.type == SD_TYPE_2_HC ? b->blockno : b->blockno << 9;
+    int bno = sdCard.type == SD_TYPE_2_HC ? (b->blockno + b->part) : (b->blockno + b->part) << 9;
     int write = b->flags & B_DIRTY;
 
     // cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, bno, write);
@@ -646,9 +648,13 @@ sd_intr()
             cprintf("sd intr unexpected: 0x%x, restarted.\n", i);
         } else {
             if (!write) {
-                uint32_t *intbuf = (uint32_t *)b->data;
-                for (int done = 0; done < 128; )
-                    intbuf[done++] = *EMMC_DATA;
+                uint32_t *p = (uint32_t *)b->data;
+                for (int done = 0; done < 128; done++, p++){
+                    *p = *EMMC_DATA;
+                    if (b->blockno == 59)
+                        cprintf("%x ", *p);
+                }
+                    
                 sdWaitForInterrupt(INT_DATA_DONE);
             }
 
@@ -659,10 +665,6 @@ sd_intr()
             list_pop_front(&sdque);
             if (!list_empty(&sdque)){
                 struct buf * head = (struct buf *) container_of(list_front(&sdque), struct buf, blist);
-                if (head->blockno != 512){
-                    int deb=0;
-                    // cprintf("ERROR!!!!!\n");
-                }
                 sd_start(head);
             }
         }

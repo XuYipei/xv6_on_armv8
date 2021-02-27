@@ -1,10 +1,12 @@
 #ifndef INC_TRAP_H
 #define INC_TRAP_H
 
-#include <stdint.h>
+#include <stdint.h>'
 
 struct trapframe {
     /* TODO: Design your own trapframe layout here. */
+    uint64_t zero, tpidr0;
+    uint64_t q0_, q0__;
     uint64_t *sp;
     uint64_t pc;
     uint64_t pstate;

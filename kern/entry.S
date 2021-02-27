@@ -14,12 +14,12 @@ _start:
     
     adr     x0, mp_start
     mov     x1, #1
-    // mov     x2, #2
-    // mov     x3, #3
+    mov     x2, #2
+    mov     x3, #3
     mov     x9, 0xd8
     str     x0, [x9, x1, lsl #3]
-    // str     x0, [x9, x2, lsl #3]
-    // str     x0, [x9, x3, lsl #3]
+    str     x0, [x9, x2, lsl #3]
+    str     x0, [x9, x3, lsl #3]
 
     dsb     sy
     isb

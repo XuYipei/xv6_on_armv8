@@ -16,13 +16,13 @@ struct buf {
     int flags;
     uint32_t dev;
     uint32_t blockno;
+    uint32_t part;
     uint32_t refcnt;
     uint8_t data[BSIZE];
     struct sleeplock lock;
 
-    /* TODO: Your code here. */
-
-    struct list_head blist;
+    struct list_head blist;     // sd buffer
+    struct list_head clist;     // cache queue
 };
 
 void        binit();

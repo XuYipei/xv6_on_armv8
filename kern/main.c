@@ -35,11 +35,8 @@ main()
      * Determine which functions in main can only be
      * called once, and use lock to guarantee this.
      */
-    /* TODO: Your code here. */
     
     cprintf("main: [CPU%d] is init kernel\n", cpuid());
-
-    /* TODO: Use `memset` to clear the BSS section of our program. */
 
     acquire(&pgdrinitlock);
     if (pgdrinitcnt == 0){
@@ -48,7 +45,6 @@ main()
     }
     release(&pgdrinitlock);
     
-    /* TODO: Use `cprintf` to print "hello, world\n" */
     console_init();
     alloc_init();
     check_free_list();
@@ -57,8 +53,11 @@ main()
     acquire(&pcinitlock);
     if (pcinitcnt == 0){
         proc_init();   
-        user_init();
-        user_init();
+        user_init(0);
+        user_init(1);
+        user_init(1);
+        user_init(1);
+        user_init(1);
         pcinitcnt = 1;
     }   
     release(&pcinitlock);
@@ -69,13 +68,6 @@ main()
     acquire(&fsinitlock);
     if (fsinitcnt == 0){
         sd_init();
-        // cprintf("sd init done.\n");
-        binit();
-        // cprintf("buffer init done.\n");
-        iinit(0);
-        // cprintf("icache init done.\n");
-        fileinit();
-        // cprintf("ftable init done.\n");
         fsinitcnt = 1;
     }
     release(&fsinitlock);

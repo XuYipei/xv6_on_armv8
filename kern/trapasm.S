@@ -33,7 +33,6 @@ alltraps:
     mrs x29, SPSR_EL1   /* PSTATE */
     mrs x28, ELR_EL1    /* PC */
     mrs x27, SP_EL0     /* SP */
-
     stp x29, x0, [sp, #16]
     stp x27, x28, [sp]
 
@@ -44,7 +43,12 @@ alltraps:
      */
 
     /* TODO: Your code here. */
-
+    
+    str q0, [sp, #-16]!
+    mrs x28, tpidr_el0
+    mov x27, 0
+    stp x27, x28, [sp, #-16]!
+    
     /*
      * Call trap(struct *trapframe).
      * Hint: The first argument is a stack pointer.
@@ -65,12 +69,15 @@ trapret:
     /* TODO: Your code here. */
 
     /* Restore Q0 and TPIDR_EL0. */
-
+    
+    ldp x27, x28, [sp], #16
+    mrs x28, tpidr_el0   
+    ldr q0, [sp], #16
+    
     /* TODO: Your code here. */
 
     ldp x27, x28, [sp], #16
     ldp x29, x0, [sp], #16
-    
     msr SP_EL0, x27
     msr ELR_EL1, x28
     msr SPSR_EL1, x29

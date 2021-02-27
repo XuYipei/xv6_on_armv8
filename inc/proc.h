@@ -31,7 +31,6 @@ extern struct cpu cpus[NCPU];
  * The layout of the context matches the layout of the stack in swtch.S
  */
 struct context {
-    /* TODO: Your code here. */
     uint64_t r0;
     uint64_t r1;
     uint64_t r2;
@@ -88,7 +87,7 @@ thisproc()
 }
 
 void proc_init();
-void user_init();
+void user_init(uint8_t);
 void scheduler();
 
 void yield();

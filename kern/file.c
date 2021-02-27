@@ -19,7 +19,6 @@ void
 fileinit()
 {
     /* TODO: Your code here. */
-    
     initlock(&ftable.lock, "file table");
 }
 

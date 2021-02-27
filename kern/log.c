@@ -56,32 +56,34 @@ static void recover_from_log();
 static void commit();
 
 void
-initlog(int dev)
+initlog(int dev, struct superblock* sb)
 {
     /* TODO: Your code here. */
     
-    struct superblock sb;
     struct buf *bf;
 
     initlock(&log.lock, "log");
     log.dev = dev;
 
-    bf = bread(dev, LBA + 1);
-    memcpy(&sb, bf->data, sizeof(sb));
-    sb.logstart   += LBA;
-    sb.bmapstart  += LBA;
-    sb.inodestart += LBA;
+    bf = bread(dev, 1);
+    memcpy(sb, bf->data, sizeof(*sb));
+    
+    /*
+     * sb.logstart   += LBA;
+     * sb.bmapstart  += LBA;
+     * sb.inodestart += LBA;
+     */
 
-    log.start = sb.logstart;
-    log.size = sb.nlog;
+    log.start = sb->logstart;
+    log.size = sb->nlog;
 
     cprintf("\n******************\n");
-    cprintf("* sb.size:       %x\n", sb.size);
-    cprintf("* sb.nblocks:    %x\n", sb.nblocks);
-    cprintf("* sb.logstart:   %x\n", sb.logstart);
-    cprintf("* sb.nlog:       %x\n", sb.nlog);
-    cprintf("* sb.inodestart: %x\n", sb.inodestart);
-    cprintf("* sb.bmapstart:  %x\n", sb.bmapstart);
+    cprintf("* sb.size:       %x\n", sb->size);
+    cprintf("* sb.nblocks:    %x\n", sb->nblocks);
+    cprintf("* sb.logstart:   %x\n", sb->logstart);
+    cprintf("* sb.nlog:       %x\n", sb->nlog);
+    cprintf("* sb.inodestart: %x\n", sb->inodestart);
+    cprintf("* sb.bmapstart:  %x\n", sb->bmapstart);
     cprintf("******************\n\n");
     
     brelse(bf);
@@ -163,7 +165,7 @@ begin_op()
         if (log.committing){
             sleep(&log, &log.lock);
         }else{
-            if ((log.outstanding + 1) * MAXOPBLOCKS <= LOGSIZE){
+            if (log.lh.n + (log.outstanding + 1) * MAXOPBLOCKS > LOGSIZE){
                 sleep(&log, &log.lock);
             }else{
                 log.outstanding += 1;

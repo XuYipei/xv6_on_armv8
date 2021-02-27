@@ -46,9 +46,7 @@ pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
             if (!alloc){
                 return(NULL);
             }
-            //cprintf("???\n");
             uint64_t address = kalloc();
-            //cprintf("+++++++++\n");
 
             tb[idx] = (uint64_t)V2P(address);
             memset((char *)address, 0, PGSIZE);
@@ -62,6 +60,19 @@ pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
     uint64_t *ret = &tb[PTX(3, va)];
 
     return(ret);
+}
+
+uint64_t
+pgdir_iwalk(uint64_t *pgdir, uint64_t va)
+{
+    uint64_t pa;
+    uint64_t *pte;
+    pte = pgdir_walk(pgdir, va, 0);
+    if (pte == 0)
+        return(0);
+    // pa = V2P(*pte);
+    pa = (*pte) >> 12 << 12;
+    return(pa);
 }
 
 /*
@@ -103,16 +114,60 @@ map_region(uint64_t *pgdir, void *va, uint64_t size, uint64_t pa, int64_t perm)
  * Hint: You need to free all existing PTEs for this pgdir.
  */
 
+int64_t
+uvm_alloc(uint64_t *pgdir, uint64_t oldsz, uint64_t newsz)
+{
+    char *pgnew;
+    uint64_t a, pa;
+    a = ROUNDUP(oldsz, PGSIZE);
+    
+    for (; a < newsz; a += PGSIZE){
+        pgnew = kalloc();
+        if (pgnew == 0){
+            return(0);
+        }
+        memset(pgnew, 0, sizeof(PGSIZE));
+        pa = V2P(pgnew);
+        if (map_region(pgdir, a, PGSIZE, pa, PTE_USER | PTE_RW) != 0){
+            return(0);
+        }
+    }
+    return(newsz);
+}
+
+int64_t
+uvm_dealloc(uint64_t *pgdir, uint64_t oldsz, uint64_t newsz)
+{
+    char *pgnew;
+    uint64_t a, pa;
+    uint64_t *pte;
+    a = ROUNDUP(newsz, PGSIZE);
+    
+    for (; a < oldsz; a += PGSIZE){
+        pte = pgdir_walk(pgdir, a, 0);
+        if (pte && (*pte) && ((*pte) & (PTE_P))){
+            pa = (*pte) >> 12 << 12;
+            kfree(P2V(pa));
+            *pte = 0;
+        }
+    }
+
+    return(newsz);
+}
+
 void
 vm_free_dfs(uint64_t *pgdir, int level)
 {
     /* TODO: Your code here. */
     uint32_t i;
-    for (i = 0; i < PGSIZE; i++){
+    uint64_t descriptor;
+    for (i = 0; i < ENTRYSZ; i++){
         if (pgdir[i] != 0 && (pgdir[i] & PTE_P)){
             if (pgdir[i] & PTE_TABLE){
-                if (level != 3)
-                    vm_free((uint64_t *)(pgdir[i] >> 12 << 12), level + 1);
+                if (level != 3){
+                    descriptor = P2V(pgdir[i] >> 12 << 12);
+                    vm_free_dfs((uint64_t *)descriptor, level + 1);
+                }
             }
             pgdir[i] = 0;
         }
@@ -127,6 +182,35 @@ vm_free(uint64_t *pgdir, int level)
     
     vm_free_dfs(pgdir, level);
 }
+
+uint64_t * 
+uvm_copy(uint64_t *old_pgdir, uint64_t sz) {
+    uint64_t i, pa, priv;
+    uint64_t *new_pgdir, *pte, *new_pg;
+    
+    if ((new_pgdir = kalloc()) == 0)
+        return(0);
+    memset(new_pgdir, 0, PGSIZE);
+
+    for (i = 0; i < sz; i += PGSIZE) {
+        if ((pte = pgdir_walk(old_pgdir, i, 0)) == 0)
+            return(0);
+        if (! ((*pte) & PTE_P)) 
+            return(0);
+        
+        pa   = (*pte) >> 12 << 12;
+        priv = (*pte) << 52 >> 52;
+        
+        if ((new_pg = kalloc()) == 0)
+            return(0);
+        memcpy(new_pg, P2V(pa), PGSIZE);
+        
+        if (pte = pgdir_walk(new_pgdir, i, 1) == 0)
+            return(0);
+        *pte = V2P(new_pg) | priv;
+    }
+    return(new_pgdir);
+};
 
 /* Get a new page table */
 uint64_t *
