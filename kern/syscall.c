@@ -138,6 +138,12 @@ argstr(int n, char **pp)
     return fetchstr(addr, pp);
 }
 
+int
+sys_rt_sigprocmask()
+{
+    return(0);
+}
+
 extern int sys_exec();
 extern int sys_exit();
 
@@ -153,80 +159,93 @@ syscall()
     struct proc *proc = thiscpu->proc;
     int sysno = proc->tf->r8;
 
-    cprintf("syscall: %d\n", sysno);
+    // cprintf("syscall: %d\n", sysno);
 
+    int ret = 0;
     switch (sysno) {
         // FIXME: Use pid instead of tid since we don't have threads :)
         case SYS_set_tid_address:
         case SYS_gettid:
-            return thisproc()->pid;
+            ret = thisproc()->pid;
+            break;
 
         // FIXME: Hack TIOCGWINSZ(get window size)
         case SYS_ioctl:
-            if (proc->tf->r1 == 0x5413) return 0;
+            if (proc->tf->r1 == 0x5413){
+                ret = 0;
+                break;
+            }
             else panic("ioctl unimplemented. 1");
 
         // FIXME: Always return 0 since we don't have signals  :)
         case SYS_rt_sigprocmask:
-            return 0;
-
+            ret = sys_rt_sigprocmask();
+            break;
         case SYS_brk:
-            return sys_brk();
-
+            ret = sys_brk();
+            break;
         case SYS_execve:
-            return sys_exec();
-
+            ret = sys_exec();
+            break;
         case SYS_sched_yield:
-            return sys_yield();
-
+            ret = sys_yield();
+            break;
         case SYS_clone:
-            return sys_clone();
-
+            ret = sys_clone();
+            break;
         case SYS_wait4:
-            return sys_wait4();
-
+            ret = sys_wait4();
+            break;
         // FIXME: exit_group should kill every thread in the current thread group.
         case SYS_exit_group:
         case SYS_exit:
-            return sys_exit();
-
+            ret = sys_exit();
+            break;
         case SYS_dup:
-            return sys_dup();
-
+            ret = sys_dup();
+            break;
         case SYS_chdir:
-            return sys_chdir();
-
+            ret = sys_chdir();
+            break;
         case SYS_fstat:
-            return sys_fstat();
-
+            ret = sys_fstat();
+            break;
         case SYS_newfstatat:
-            return sys_fstatat();
+            ret = sys_fstatat();
+            break;
         case SYS_mkdirat:
-            return sys_mkdirat();
-
+            ret = sys_mkdirat();
+            break;
         case SYS_mknodat:
-            return sys_mknodat();
-            
+            ret = sys_mknodat();
+            break;
         case SYS_openat:
-            return sys_openat();
-
+            ret = sys_openat();
+            break;
         case SYS_writev:
-            return sys_writev();
-
+            ret = sys_writev();
+            break;
+        case SYS_write:
+            ret = sys_write();
+            break;
         case SYS_read:
-            return sys_read();
-
+            ret = sys_read();
+            break;
         case SYS_close:
-            return sys_close();
-
+            ret = sys_close();
+            break;
         case SYS_test:
-            return sys_test();
-
+            ret = sys_test();
+            break;
         default:
             // debug_reg();
             panic("Unexpected syscall #%d\n", sysno);
-            return 0;
+            ret = 0;
+            break;
     }
+
+    proc->tf->r0 = ret;
+    return(ret);
 }
 
 /* TODO: If you want to use musl

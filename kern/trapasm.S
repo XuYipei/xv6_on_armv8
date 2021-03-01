@@ -29,12 +29,11 @@ alltraps:
     stp x3, x4, [sp, #-16]!
     stp x1, x2, [sp, #-16]!
     
-    sub sp, sp, #32
-    mrs x29, SPSR_EL1   /* PSTATE */
-    mrs x28, ELR_EL1    /* PC */
-    mrs x27, SP_EL0     /* SP */
-    stp x29, x0, [sp, #16]
-    stp x27, x28, [sp]
+    mrs x12, SPSR_EL1   /* PSTATE */
+    mrs x11, ELR_EL1    /* PC */
+    mrs x10, SP_EL0     /* SP */
+    stp x12, x0, [sp, #-16]!
+    stp x10, x11, [sp, #-16]!
 
     /*
      * Save Q0 and TPIDR_EL0 to placate musl such as
@@ -45,16 +44,16 @@ alltraps:
     /* TODO: Your code here. */
     
     str q0, [sp, #-16]!
-    mrs x28, tpidr_el0
-    mov x27, 0
-    stp x27, x28, [sp, #-16]!
+    mrs x12, tpidr_el0
+    mov x11, 0
+    stp x12, x12, [sp, #-16]!
     
     /*
      * Call trap(struct *trapframe).
      * Hint: The first argument is a stack pointer.
      */
     
-    mov x27, x0
+    mov x0, sp
     bl trap
 
 /* Return falls through to trapret. */
@@ -70,17 +69,17 @@ trapret:
 
     /* Restore Q0 and TPIDR_EL0. */
     
-    ldp x27, x28, [sp], #16
-    mrs x28, tpidr_el0   
+    ldp x11, x12, [sp], #16
+    msr tpidr_el0, x11
     ldr q0, [sp], #16
     
     /* TODO: Your code here. */
 
-    ldp x27, x28, [sp], #16
-    ldp x29, x0, [sp], #16
-    msr SP_EL0, x27
-    msr ELR_EL1, x28
-    msr SPSR_EL1, x29
+    ldp x10, x11, [sp], #16
+    ldp x12, x0, [sp], #16
+    msr SP_EL0, x10
+    msr ELR_EL1, x11
+    msr SPSR_EL1, x12
 
     ldp x1, x2, [sp], #16
     ldp x3, x4, [sp], #16

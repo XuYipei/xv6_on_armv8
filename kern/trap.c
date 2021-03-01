@@ -67,8 +67,10 @@ interrupt(struct trapframe *tf)
 void
 trap(struct trapframe *tf)
 {
+    uint64_t fa;
     int ec = resr() >> EC_SHIFT, iss = resr() & ISS_MASK;
     lesr(0);  /* Clear esr. */
+    //debug_print("%x %x\n", (uint64_t)ec, iss);
     switch (ec) {
     case EC_UNKNOWN:
         interrupt(tf);
@@ -76,13 +78,16 @@ trap(struct trapframe *tf)
 
     case EC_SVC64:
         if (iss == 0) {
-            /* Jump to syscall to handle the system call from user process */
-            /* TODO: Your code here. */
-            // syscall();
             syscall();
         } else {
             cprintf("unexpected svc iss 0x%x\n", iss);
         }
+        break;
+
+    case EC_DABORT:
+        asm("MRS %[r], FAR_EL1": [r]"=r" (fa)::);
+        cprintf ("data abort: instruction 0x%x, fault addr 0x%x\n", tf->pc, fa);
+        panic("address above limit\n");
         break;
 
     default:

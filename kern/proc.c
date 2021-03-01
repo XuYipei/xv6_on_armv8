@@ -48,10 +48,14 @@ proc_init()
     initlock(&ptablelock, "ptable");
 }
 void cleanproc(struct proc *p){
+    p->pid     = 0;
+    p->parent  = NULL;
+    p->killed  = 0;
+    p->name[0] = '\0';
+    p->kstack  = 0;
+    p->sz      = 0;
+    vm_free(p->pgdir, 0);
     p->state = UNUSED;
-    p->pid = 0;
-    p->parent = NULL;
-    p->killed = 0;
 }
 
 /*
@@ -106,12 +110,13 @@ proc_alloc()
     memset(p->context, 0, sizeof(struct context));
     p->context->r30 = (uint64_t)forkret + 8;
 
+    p->chan = 0;
+    p->prio = PRIOENTRIES - 1;
     p->clist.next = p->clist.prev = 0;
     p->plist.next = p->plist.prev = 0;
     memset(p->ofile, 0, sizeof(p->ofile));
     p->cwd = 0;
     
-
     release(&ptablelock);
 
     return p;
@@ -132,7 +137,6 @@ user_init(uint8_t loop)
     
     /* TODO: Your code here. */
     p = proc_alloc();
-    initproc = p;
 
     if ((p->pgdir = kalloc()) == NULL) {
         panic("userinit");
@@ -140,19 +144,23 @@ user_init(uint8_t loop)
     
     uvm_init(p->pgdir, _binary_obj_user_initcode_start, _binary_obj_user_initcode_size);
     p->tf->sp = PGSIZE;
-    if (!loop)
+    if (!loop){
         p->tf->pc = 0x8;
+        initproc = p;
+    }else{
+        p->tf->pc = 0x0;
+    }
 
     p->sz = PGSIZE;
-    memcpy(p->name, "initcode", sizeof(p->name));
+    if (loop)
+        memcpy(p->name, "loop", sizeof(p->name));
+    else
+        memcpy(p->name, "init", sizeof(p->name));
     
+    acquire(&ptablelock);
     p->state = RUNNABLE;
-    
-    p->clist.next = p->clist.prev = 0;
-    p->plist.next = p->plist.prev = 0;
-
-    p->prio = PRIOENTRIES - 1;
     list_push_back(&prioque[p->prio], &p->plist);
+    release(&ptablelock);
 }
 
 /*
@@ -172,6 +180,7 @@ scheduler()
 {
     struct proc *p;
     struct cpu *c = thiscpu;
+    struct list_head *pl;
     c->proc = NULL;
     
     for (;;) {
@@ -180,27 +189,28 @@ scheduler()
         acquire(&ptablelock);
         
         // cprintf("SCHEDULER TURN BEGIN\n");
+        // for (p = ptable.proc; p < &ptable.proc + NPROC; p++){
+        //     if (p->state != RUNNABLE)
+        //         continue;
+        // }
 
-        // for (struct list_head* l = &prioque[PRIOENTRIES - 1]; l >= prioque; l--) 
-            // if (!list_empty(l)) {
-        for (p = ptable.proc; p < &ptable.proc + NPROC; p++){
-            if (p->state != RUNNABLE)
-                continue;
 
-            c->proc = p;
-            uvm_switch(p);
-            p->state = RUNNING;
-            // list_delete(&p->plist);
-            
-            swtch(&c->scheduler, p->context);
-            break;
-            
-            c->proc = 0;
-        }
-            // }
+        for (int i = PRIOENTRIES - 1; i >= 0; i--) 
+            if (!list_empty(&prioque[i])) {
+                
+                pl = list_front(&prioque[i]);
+                p = container_of(pl, struct proc, plist);
 
-        // cprintf("SCHEDULER TURN END\n");
-
+                c->proc = p;
+                uvm_switch(p);
+                p->state = RUNNING;
+                list_delete(&p->plist);
+                
+                swtch(&c->scheduler, p->context);
+                
+                c->proc = 0;
+                break;
+            }
         release(&ptablelock);
     }
 }
@@ -245,29 +255,34 @@ exit()
     struct proc *p = thiscpu->proc;
     /* TODO: Your code here. */
 
-    struct file *of;
-    for (of = p->ofile; of < p->ofile + NOFILE; of++)
-        if (of){
-            fileclose(of);
-            of = 0;
+    uint32_t i;
+    for (i = 0; i < NOFILE; i++)
+        if (p->ofile[i]){
+            fileclose(p->ofile[i]);
+            p->ofile[i] = 0;
         }
     if (p->cwd){
         begin_op();
         iput(p->cwd);
         end_op();
+        p->cwd = 0;
     }
-    
     acquire(&ptablelock);
 
     struct proc *pc;
-    for (pc = &ptable.proc; pc < &ptable.proc[NPROC]; pc++) {
+    wakeup1(p->parent);
+    for (pc = ptable.proc; pc < &ptable.proc[NPROC]; pc++) {
         if (pc->parent == p) {
             pc->parent = initproc;
+            if (pc->state == ZOMBIE)
+                wakeup1(initproc);
         }
     }
 
+    if (p->state == RUNNABLE) {
+        list_delete(&p->plist);
+    }
     p->state = ZOMBIE;
-    // list_delete(&p->plist);
 
     sched();
 }
@@ -291,11 +306,13 @@ sleep(void *chan, struct spinlock *lk)
     struct proc *p = thiscpu->proc;
     
     p->chan = chan;
+    if (p->state == RUNNABLE) {
+        list_delete(&p->plist);
+    }
     p->state = SLEEPING;
-    // list_delete(&p->plist);
 
-    // uint64_t entry = (uint64_t)chan % HASHENTRIES;
-    // list_push_back(&hashmp[entry], &(p->clist));
+    uint64_t entry = (uint64_t)chan % HASHENTRIES;
+    list_push_back(&hashmp[entry], &(p->clist));
 
     // cprintf("SLEEP SCHED\n");
     sched();
@@ -310,22 +327,20 @@ sleep(void *chan, struct spinlock *lk)
 
 /* Wake up all processes sleeping on chan. */
 void
-wakeup(void *chan)
+wakeup1(void *chan)
 {
-    /* TODO: Your code here. */
     struct list_head *ery, *l, *lnext;
-    acquire(&ptablelock);
-
     struct proc *p;
     
+    /*
     for (p = ptable.proc; p < &ptable.proc + NPROC; p++) {
         if (p->chan == chan && p->state == SLEEPING) {
             p->state = RUNNABLE;
             // list_push_back(&prioque[p->prio], &p->plist);
         }
     }
-
-    /*
+    */
+    
     uint64_t entry = (uint64_t)chan % HASHENTRIES;
     ery = &hashmp[entry];
     for (struct list_head* l = ery->next; l != ery; l = lnext) {
@@ -333,12 +348,21 @@ wakeup(void *chan)
         struct proc *p = container_of(l, struct proc, clist);
         if (p->chan == chan && p->state == SLEEPING) {
             p->state = RUNNABLE;
+            p->chan  = 0;
             list_delete(l);
             list_push_back(&prioque[p->prio], &p->plist);
             // break;
         }
     }
-    */
+    
+}
+void
+wakeup(void *chan)
+{
+    /* TODO: Your code here. */
+    acquire(&ptablelock);
+
+    wakeup1(chan);
     
     release(&ptablelock);
 }
@@ -370,6 +394,8 @@ fork()
 {
     /* TODO: Your code here. */
 
+    cprintf("fork: begin\n");
+
     int cpid, i;
     struct proc *par, *child;
     par = thiscpu->proc;
@@ -378,16 +404,15 @@ fork()
         panic("fork");
     }
 
-    child->sz = par->sz;
     child->parent = par;
 
     for (i = 0; i < NOFILE; i++){
         child->ofile[i] = par->ofile[i];
         if (child->ofile[i])
-            filedup(child->ofile[i]);
+            child->ofile[i] = filedup(child->ofile[i]);
     }
     child->cwd = idup(par->cwd);
-
+    
     if ((child->pgdir = uvm_copy(par->pgdir, par->sz)) == 0)
         panic("fork");
     child->sz = par->sz;
@@ -396,7 +421,7 @@ fork()
     child->tf->r0 = 0;
     // to child, fork() return 0
 
-    memcpy(child->name, par->name, sizeof(child->name));
+    memcpy(child->name, par->name, strlen(child->name));
     cpid = child->pid;
 
     acquire(&ptablelock);

@@ -126,9 +126,9 @@ uvm_alloc(uint64_t *pgdir, uint64_t oldsz, uint64_t newsz)
         if (pgnew == 0){
             return(0);
         }
-        memset(pgnew, 0, sizeof(PGSIZE));
+        memset(pgnew, 0, PGSIZE);
         pa = V2P(pgnew);
-        if (map_region(pgdir, a, PGSIZE, pa, PTE_USER | PTE_RW) != 0){
+        if (map_region(pgdir, a, PGSIZE, pa, PTE_USER | PTE_RW) < 0){
             return(0);
         }
     }
@@ -205,9 +205,8 @@ uvm_copy(uint64_t *old_pgdir, uint64_t sz) {
             return(0);
         memcpy(new_pg, P2V(pa), PGSIZE);
         
-        if (pte = pgdir_walk(new_pgdir, i, 1) == 0)
+        if (map_region(new_pgdir, i, PGSIZE, V2P(new_pg), priv))
             return(0);
-        *pte = V2P(new_pg) | priv;
     }
     return(new_pgdir);
 };

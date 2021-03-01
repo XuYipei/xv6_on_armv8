@@ -65,8 +65,6 @@ fdalloc(struct file *f)
     p = thisproc();
 
     for (fd = 0; fd < NOFILE; fd++){
-        if (p->ofile[fd] == f)
-            return(fd);
         if (!p->ofile[fd]){
             p->ofile[fd] = f;
             return(fd);
@@ -83,9 +81,11 @@ sys_dup()
     struct file *f;
     int64_t fd;
     int result;
-    if (argfd(0, &fd, &f) < 0)
+    if (argfd(0, 0, &f) < 0)
         return(-1);
-    result = filedup(f);
+    if ((result = fdalloc(f)) < 0)
+        return(-1);
+    filedup(f);
     return(result);
 }
 
@@ -96,13 +96,12 @@ sys_read()
 
     struct file *f;
     int64_t fd;
-    struct iovec *iov;
-    ssize_t wtn;
-    if (argfd(0, &fd, &f) < 0 || argptr(1, &iov, sizeof(struct iovec)) < 0)
+    struct iovec iov;
+    ssize_t rdn;
+    if (argfd(0, 0, &f) < 0 || argint(2, &iov.iov_len) < 0 || argptr(1, &iov.iov_base, iov.iov_len) < 0)
         return -1;
-
-    wtn = fileread(f, iov->iov_base, iov->iov_len);
-    return(wtn);
+    rdn = fileread(f, iov.iov_base, iov.iov_len);
+    return(rdn);
 }
 
 ssize_t
@@ -112,12 +111,11 @@ sys_write()
 
     struct file *f;
     int64_t fd;
-    struct iovec *iov;
+    struct iovec iov;
     ssize_t wtn;
-    if (argfd(0, &fd, &f) < 0 || argptr(1, &iov, sizeof(struct iovec)) < 0)
+    if (argfd(0, &fd, &f) < 0 || argint(2, &iov.iov_len) < 0 || argptr(1, &iov.iov_base, iov.iov_len) < 0)
         return -1;
-
-    wtn = filewrite(f, iov->iov_base, iov->iov_len);
+    wtn = filewrite(f, iov.iov_base, iov.iov_len);
     return(wtn);
 }
 
@@ -158,6 +156,8 @@ sys_writev()
     if (argptr(1, &iov, iovcnt * sizeof(struct iovec)) < 0)
         return(-1);
 
+    cprintf("write begin.\n");
+
     size_t tot = 0;
     for (p = iov; p < iov + iovcnt; p++){
         tot += filewrite(f, p->iov_base, p->iov_len);
@@ -174,7 +174,11 @@ sys_close()
     int64_t fd;
     if (argfd(0, &fd, &f) < 0)
         return(-1);
+    struct proc* p;
+    p = thiscpu->proc;
+    p->ofile[fd] = 0;
     fileclose(f);
+    return(0);
 }
 
 int
@@ -183,12 +187,11 @@ sys_fstat()
     /* TODO: Your code here. */
 
     struct file *f;
-    int64_t fd;
     int result;
     struct stat *st;
-    if (argfd(0, &fd, &f) < 0 || argptr(1, &st, sizeof(struct stat)))
+    if (argfd(0, 0, &f) < 0 || argptr(1, &st, sizeof(struct stat)))
         return(-1);
-    result = filestat(fd, st);
+    result = filestat(f, st);
     return(result);
 }
 
@@ -234,7 +237,6 @@ create(char *path, short type, short major, short minor)
     /* TODO: Your code here. */
 
     size_t poff;
-    struct file *f;
     struct inode *ind, *dp, *find;
     char name[DIRSIZ];
 
@@ -258,7 +260,6 @@ create(char *path, short type, short major, short minor)
     
     ind->major = major;
     ind->minor = minor;
-    ind->type = type;
     ind->nlink = 1;
     iupdate(ind);
 
@@ -270,7 +271,9 @@ create(char *path, short type, short major, short minor)
     }
     dirlink(dp, name, ind->inum);
 
-    iunlock(ind);
+    iunlockput(dp);
+    // create an inode ind, holding its lock
+    cprintf("create: %s return.\n", path);
     return(ind);
 }
 
@@ -305,8 +308,10 @@ sys_openat()
             return -1;
         }
     } else {
+        cprintf("NOT O_CREAT\n");
         if ((ip = namei(path)) == 0) {
             end_op();
+            cprintf("sys_openat cannot find.\n");
             return -1;
         }
         ilock(ip);
@@ -332,6 +337,9 @@ sys_openat()
     f->off = 0;
     f->readable = !(omode & O_WRONLY);
     f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+
+
+    cprintf("open file done.\n");
     return fd;
 }
 
@@ -386,6 +394,7 @@ sys_mknodat()
     }
     iunlockput(ip);
     end_op();
+    
     return 0;
 }
 

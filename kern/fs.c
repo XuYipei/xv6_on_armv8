@@ -88,14 +88,13 @@ bfree(int dev, uint32_t b)
 {
     /* TODO: Your code here. */
 
-    int i, j, k;
+    int j, k;
     struct buf *bf;
-    i = b / BPB;
     j = b % BPB / 8;
     k = 1 << (b % BPB % 8);
 
-    bf = bread(dev, BBLOCK(i, sb));
-    if (bf->data[j] & k)
+    bf = bread(dev, BBLOCK(b, sb));
+    if (!(bf->data[j] & k))
         panic("Free block has been freed");
     bf->data[j] ^= k;
     log_write(bf);
@@ -207,13 +206,14 @@ ialloc(uint32_t dev, short type)
     struct dinode *ind;
     for (i = 0; i < sb.ninodes; i+=IPB){
         bf = bread(dev, IBLOCK(i, sb));
-        for (j = 0; j < IPB; j++){
+        for (j = 1; j < IPB; j++){
             ind = ((struct dinode *)(bf->data)) + j;
             if (ind->type) continue;
+            memset(ind, 0, sizeof(*ind));
             ind->type = type;
             log_write(bf);
             brelse(bf);
-            return(iget(dev, i));
+            return(iget(dev, i + j));
         }
         brelse(bf);
     }
@@ -253,6 +253,13 @@ static struct inode*
 iget(uint32_t dev, uint32_t inum)
 {
     /* TODO: Your code here. */
+
+    // cprintf("iget: inum = %x.\n", inum);
+
+    if (inum == 3){
+        int deb=0;
+    }
+
 
     int i, j, k;
     struct inode *ind = 0, *emp = 0;
@@ -494,6 +501,9 @@ readi(struct inode *ip, char *dst, size_t off, size_t n)
         n = ip->size - off;
 
     for (tot = 0; tot < n; tot += m, off += m, dst += m) {
+
+        // cprintf("bmap: %x %x %x\n", ip->inum, off/BSIZE, bmap(ip, off/BSIZE));
+
         bp = bread(ip->dev, bmap(ip, off/BSIZE));
         m = min(n - tot, BSIZE - off%BSIZE);
         memmove(dst, bp->data + off%BSIZE, m);
@@ -560,16 +570,24 @@ dirlookup(struct inode *dp, char *name, size_t *poff)
         panic("dirlookup not DIR");
 
     for (off = 0; off < dp->size; off += sizeof(de)) {
+        /*
+         *  cprintf("%x %x\n", off, dp->size);
+         *  if (off == 0x1f0){
+         *      int deb1=0;
+         *      deb1 += 2; 
+         *  }
+         */
         if (readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
             panic("dirlookup read");
         if (de.inum == 0)
             continue;
-
-        cprintf("%s %s\n", name, de.name);
-        if (*de.name == 's'){
-            int deb = 0;
-            deb += 1;
-        }
+        
+        // cprintf("%s %s\n", name, de.name);
+        // if (*de.name == 's'){
+        //     int deb = 0;
+        //     deb += 1;
+        // }
+        
 
         if (namecmp(name, de.name) == 0) {
             // entry matches path element

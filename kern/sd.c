@@ -549,10 +549,8 @@ sd_init()
     */
 
     uint32_t *p = (uint32_t *)job.data;
-    for (int done = 0; done < 128; done++, p++){
+    for (int done = 0; done < 128; done++, p++)
         *p = *EMMC_DATA;
-        cprintf("%x ", *p);
-    }
 
     sdWaitForInterrupt(INT_DATA_DONE);
 

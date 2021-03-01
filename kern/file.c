@@ -50,6 +50,7 @@ filedup(struct file *f)
     acquire(&ftable.lock);
     f->ref += 1;
     release(&ftable.lock);
+    return(f);
 }
 
 /* Close file f. (Decrement ref count, close when reaches 0.) */
@@ -62,15 +63,16 @@ fileclose(struct file *f)
     acquire(&ftable.lock);
 
     f->ref -= 1;
-    if (f->ref > 0) return;   
+    if (f->ref > 0){
+        release(&ftable.lock);
+        return;   
+    }
     
     f->type = FD_NONE;
     fs = *f;
     release(&ftable.lock);
 
     if (fs.type == FD_PIPE){
-        
-    }else{
         begin_op();
         iput(fs.ip);
         end_op();
@@ -87,9 +89,8 @@ filestat(struct file *f, struct stat *st)
 
     if (f->type == FD_INODE){
         ilock(f->ip);
-        stati(f->ip, &sts);
+        stati(f->ip, st);
         iunlock(f->ip);
-        st = &sts;
         return(0);
     }
     return(-1);
@@ -103,15 +104,18 @@ fileread(struct file *f, char *addr, ssize_t n)
 
     ssize_t rdn;
     if (f->type != FD_INODE)
-        return(0);
+        return(-1);
 
     ilock(f->ip);
     rdn = readi(f->ip, addr, f->off, n);
-    f->off += rdn;
+    if (rdn > 0){
+        f->off += rdn;
+    }
     iunlock(f->ip);
 
     return(rdn);
 }
+
 
 /* Write to file f. */
 ssize_t
@@ -141,11 +145,12 @@ filewrite(struct file *f, char *addr, ssize_t n)
         iunlock(f->ip);
         end_op();
     }
-
-    return(fin);
+    
+    return((fin == n) ? (n) : (-1));
     /*
      * 为了防止log溢出, inode, indirect, 上下两个不满的
      * 分多次log_write
     */
 }
+
 

@@ -103,11 +103,19 @@ bread(uint32_t dev, uint32_t blockno)
     bf = bget(dev, blockno);
     if (!(bf->flags & B_VALID)){
         sdrw(bf);
-        bf->flags |= B_VALID;
+        // cprintf("%x\n", blockno);
+        bf->flags = B_VALID;
     }
+    /*
     if (blockno == 59){
         int deb=0;
+        uint32_t *p = (uint32_t*)bf->data;
+        for (int done = 0; done < 128; done++, p++){
+            cprintf("%x ", *p);
+        }
+        cprintf("\n");
     }
+    */
     return(bf);
 }
 
@@ -118,7 +126,7 @@ bwrite(struct buf *b)
     /* TODO: Your code here. */
     if (!holdingsleep(&b->lock))
         panic("Write buffer isn't locked");
-    b->flags = B_DIRTY;
+    b->flags |= B_DIRTY;
     sdrw(b);
 }
 
@@ -137,8 +145,10 @@ brelse(struct buf *b)
     acquire(&bcache.lock);
 
     b->refcnt--;
-    list_delete(&b->clist);
-    list_push_front(&bcache.head.clist, &b->clist);
+    if (b->refcnt == 0){
+        list_delete(&b->clist);
+        list_push_front(&bcache.head.clist, &b->clist);
+    }
 
     release(&bcache.lock);
 }

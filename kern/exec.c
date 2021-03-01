@@ -18,33 +18,46 @@
 static int
 loadseg(uint64_t* pgdir, uint64_t va, struct inode *ip, uint32_t off, uint32_t sz)
 {
-    cprintf("Loadseg begin:\n");
-
-    uint32_t i, s;
-    uint64_t pa, a;
+    uint32_t i, n, s;
+    uint64_t *pte, pa, va0;
+    
+    va0 = ROUNDDOWN(va, PGSIZE);
+    s   = va % PGSIZE;
+    n   = (PGSIZE - s > sz) ? (sz) : (PGSIZE - s);
+    pa  = pgdir_iwalk(pgdir, va0);
+    if (readi(ip, P2V(pa + s), off, n) != n)
+        return(-1);
+    off += n;
+    va  += n;
+    sz  -= n;
+    
     for (i = 0; i < sz; i += PGSIZE){
-        s = (sz - i >= PGSIZE) ? (PGSIZE) : (sz - i);
-        if (readi(ip, va + i, off + i, s) != s)
+        n  = (sz - i >= PGSIZE) ? (PGSIZE) : (sz - i);
+        pa = pgdir_iwalk(pgdir, va + i);
+        // cprintf("%x\n", i);
+        if (readi(ip, P2V(pa), off + i, n) != n)
             return(-1);
-        cprintf("%x\n", i);
+        // cprintf("%x\n", i);
     }
-    return(0);
+    return 0;
 }
 
 int
-copyout(uint64_t *pgdir, uint64_t dstva, char *src, int64_t len)
+copyout(uint64_t *pgdir, uint32_t dstva, char *src, uint32_t len)
 {
-    uint64_t n, va0;
+    uint64_t n, va0, pa0;
 
     while (len > 0) {
         va0 = ROUNDDOWN(dstva, PGSIZE);
+        pa0 = pgdir_iwalk(pgdir, va0);
+
         n = PGSIZE - (dstva - va0);
         if (n > len) n = len;
-        memcpy(dstva, src, n);
+        memcpy(P2V(pa0 + (dstva - va0)), src, n);
 
-        len -= n;
-        src += n;
-        dstva = va0 + PGSIZE;
+        len   -= n;
+        src   += n;
+        dstva += n;
     }
     return(0);
 }
@@ -61,6 +74,7 @@ execve(char *path, char * argv[], char * envp[])
     struct proc *proc;
     uint64_t sp, stackbase, ustack[MAXARG];
     uint64_t *pgdir, *pgdir_old;
+    proc = thiscpu->proc;
     
     begin_op();
     if ((ip = namei(path)) == 0){
@@ -69,13 +83,13 @@ execve(char *path, char * argv[], char * envp[])
     }
     ilock(ip);
 
-    if (readi(ip, &eh, 0, sizeof(eh)) != sizeof(eh))
+    if (readi(ip, (char *)&eh, 0, sizeof(eh)) != sizeof(eh))
         return(-1);
+    if ((pgdir = (uint64_t)kalloc()) == 0)
+        return(-1);
+    memset((char *)pgdir, 0, PGSIZE);
     
     sz = 0;
-    proc = thisproc();
-    pgdir = kalloc();
-    pgdir_old = proc->pgdir;
     for (i = 0, off = eh.e_phoff; i < eh.e_phnum; i++, off += sizeof(ph)){
         if (readi(ip, &ph, off, sizeof(ph)) != sizeof(ph))
             return(-1);
@@ -83,15 +97,15 @@ execve(char *path, char * argv[], char * envp[])
             continue;
         if ((sz = uvm_alloc(pgdir, sz, ph.p_memsz + ph.p_vaddr)) == 0)
             return(-1);
-
-        proc->pgdir = pgdir;
-        lttbr0((uint64_t)pgdir);
-
+        if (ph.p_vaddr % PGSIZE){
+            if ((sz = uvm_alloc(pgdir, sz, sz + PGSIZE)) == 0)
+                return(-1);
+        }
         if (loadseg(pgdir, ph.p_vaddr, ip, ph.p_offset, ph.p_filesz) != 0)
             return(-1);
     }
 
-    iunlock(ip);
+    iunlockput(ip);
     end_op();
 
     /* TODO: Allocate user stack. */
@@ -99,7 +113,6 @@ execve(char *path, char * argv[], char * envp[])
     sz = ROUNDUP(sz, PGSIZE);
     if ((sz = uvm_alloc(pgdir, sz, sz + 2 * PGSIZE)) == 0)
         return(-1);
-    lttbr0((uint64_t)pgdir);
     sp = sz;
     stackbase = sp - PGSIZE;
 
@@ -127,14 +140,16 @@ execve(char *path, char * argv[], char * envp[])
     proc->tf->r0 = argc;
     proc->tf->r1 = sp;
 
-    memcpy(proc->name, path, sizeof(proc->name));
-
-    vm_free(pgdir_old, 0);
+    memcpy(proc->name, path, strlen(path));
     
     proc->sz = sz;
     proc->tf->pc = eh.e_entry;
     proc->tf->sp = sp;
     
+    pgdir_old = proc->pgdir;
+    proc->pgdir = pgdir;
+    uvm_switch(proc);
+    vm_free(pgdir_old, 0);
     return(argc);
 
     /* TODO: Push argument strings.
