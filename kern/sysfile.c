@@ -156,7 +156,7 @@ sys_writev()
     if (argptr(1, &iov, iovcnt * sizeof(struct iovec)) < 0)
         return(-1);
 
-    cprintf("write begin.\n");
+    // cprintf("write begin.\n");
 
     size_t tot = 0;
     for (p = iov; p < iov + iovcnt; p++){
@@ -273,7 +273,7 @@ create(char *path, short type, short major, short minor)
 
     iunlockput(dp);
     // create an inode ind, holding its lock
-    cprintf("create: %s return.\n", path);
+    // cprintf("create: %s return.\n", path);
     return(ind);
 }
 
@@ -288,7 +288,7 @@ sys_openat()
     if (argint(0, &dirfd) < 0 || argstr(1, &path) < 0 || argint(2, &omode) < 0)
         return -1;
 
-    cprintf("openat: %s\n", path);
+    // cprintf("openat: %s\n", path);
 
     if (dirfd != AT_FDCWD) {
         cprintf("sys_openat: dirfd unimplemented\n");
@@ -308,10 +308,10 @@ sys_openat()
             return -1;
         }
     } else {
-        cprintf("NOT O_CREAT\n");
+        // cprintf("NOT O_CREAT\n");
         if ((ip = namei(path)) == 0) {
             end_op();
-            cprintf("sys_openat cannot find.\n");
+            // cprintf("sys_openat cannot find.\n");
             return -1;
         }
         ilock(ip);
@@ -339,7 +339,7 @@ sys_openat()
     f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
 
 
-    cprintf("open file done.\n");
+    // cprintf("open file done.\n");
     return fd;
 }
 

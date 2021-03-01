@@ -649,8 +649,6 @@ sd_intr()
                 uint32_t *p = (uint32_t *)b->data;
                 for (int done = 0; done < 128; done++, p++){
                     *p = *EMMC_DATA;
-                    if (b->blockno == 59)
-                        cprintf("%x ", *p);
                 }
                     
                 sdWaitForInterrupt(INT_DATA_DONE);

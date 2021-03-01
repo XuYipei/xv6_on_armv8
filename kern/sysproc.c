@@ -79,7 +79,7 @@ sys_wait4()
 int
 sys_exit()
 {
-    cprintf("sys_exit: in exit\n");
+    // cprintf("sys_exit: in exit\n");
     exit();
     return 0;
 }

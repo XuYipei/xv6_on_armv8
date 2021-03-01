@@ -254,13 +254,6 @@ iget(uint32_t dev, uint32_t inum)
 {
     /* TODO: Your code here. */
 
-    // cprintf("iget: inum = %x.\n", inum);
-
-    if (inum == 3){
-        int deb=0;
-    }
-
-
     int i, j, k;
     struct inode *ind = 0, *emp = 0;
     acquire(&icache.lock);

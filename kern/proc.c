@@ -394,7 +394,7 @@ fork()
 {
     /* TODO: Your code here. */
 
-    cprintf("fork: begin\n");
+    // cprintf("fork: begin\n");
 
     int cpid, i;
     struct proc *par, *child;

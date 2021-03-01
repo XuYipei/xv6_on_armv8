@@ -34,10 +34,8 @@ loadseg(uint64_t* pgdir, uint64_t va, struct inode *ip, uint32_t off, uint32_t s
     for (i = 0; i < sz; i += PGSIZE){
         n  = (sz - i >= PGSIZE) ? (PGSIZE) : (sz - i);
         pa = pgdir_iwalk(pgdir, va + i);
-        // cprintf("%x\n", i);
         if (readi(ip, P2V(pa), off + i, n) != n)
             return(-1);
-        // cprintf("%x\n", i);
     }
     return 0;
 }

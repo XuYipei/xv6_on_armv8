@@ -103,19 +103,8 @@ bread(uint32_t dev, uint32_t blockno)
     bf = bget(dev, blockno);
     if (!(bf->flags & B_VALID)){
         sdrw(bf);
-        // cprintf("%x\n", blockno);
         bf->flags = B_VALID;
     }
-    /*
-    if (blockno == 59){
-        int deb=0;
-        uint32_t *p = (uint32_t*)bf->data;
-        for (int done = 0; done < 128; done++, p++){
-            cprintf("%x ", *p);
-        }
-        cprintf("\n");
-    }
-    */
     return(bf);
 }
 
