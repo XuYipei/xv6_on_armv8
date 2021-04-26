@@ -96,5 +96,9 @@ sys_test()
     struct proc *proc = thiscpu->proc;
     proc->cwd = namei("/");
 
+#ifdef TEST_FILE_SYSTEM
+        test_file_system();
+#endif
+
     return(0);
 }

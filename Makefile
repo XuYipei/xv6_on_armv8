@@ -128,5 +128,15 @@ init:
 
 clean:
 	$(MAKE) -C user clean
-	$(MAKE) -C libc clean
+	# $(MAKE) -C libc clean
 	rm -rf $(BUILD_DIR)
+
+TEST_FS := @
+ifeq ($(TEST_FS), 1)
+CFLAGS+=-DTEST_FILE_SYSTEM
+endif
+
+testfs: 
+	@make clean
+	@make all TEST_FS=1
+	@make qemu
